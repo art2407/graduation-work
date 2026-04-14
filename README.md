@@ -1,1 +1,1 @@
-# graduation-work
+# ВКР
