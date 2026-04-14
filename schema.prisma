@@ -1,0 +1,261 @@
+// Это ваша схема Prisma.
+// Она описывает структуру базы данных и связи между таблицами.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS (Перечисления)
+// ==========================================
+
+enum UserRole {
+  GUEST       // Техническая роль, в БД обычно не хранится явно для зарегистрированных
+  STUDENT
+  ORGANIZER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DELETED     // Soft delete
+}
+
+enum EventStatus {
+  DRAFT
+  MODERATION  // На проверке у админа
+  PUBLISHED   // Видно всем
+  REJECTED    // Отклонено модерацией
+  CANCELLED   // Отменено организатором
+  COMPLETED   // Прошло
+  ARCHIVED    // Архивировано
+}
+
+enum RegistrationStatus {
+  PENDING     // Если нужна подтверждающая регистрация
+  CONFIRMED   // Записан
+  CANCELLED   // Отменил участие сам или организатор
+  NO_SHOW     // Не пришел (не сделал чек-ин)
+  ATTENDED    // Посетил (сделал чек-ин)
+}
+
+enum CertificateStatus {
+  PENDING     // Ожидает загрузки организатором
+  ISSUED      // Выдан (файл загружен)
+}
+
+// ==========================================
+// USERS & PROFILES
+// ==========================================
+
+model User {
+  id            String    @id @default(uuid())
+  login         String    @unique
+  email         String    @unique
+  passwordHash  String
+  role          UserRole  @default(STUDENT)
+  status        UserStatus @default(ACTIVE)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  // Связи 1:1 с профилями
+  studentProfile    StudentProfile?
+  organizerProfile  OrganizerProfile?
+  
+  // Связи 1:M
+  registrations     Registration[]
+  pushSubscriptions PushSubscription[]
+  createdEvents     Event[] // Если организатор создает события напрямую
+  
+  // Аудит
+  deletedAt     DateTime?
+
+  @@index([login])
+  @@index([email])
+  @@index([role, status])
+}
+
+model StudentProfile {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  fullName      String
+  birthDate     DateTime?
+  phone         String?
+  avatarUrl     String?
+  
+  // Специфика ВУЗа
+  institute     String   // Название института/факультета
+  group         String   // Учебная группа
+  yearOfStudy   Int      // 1-6
+  studyStatus   String   @default("ACTIVE") // ACTIVE, GRADUATED, EXPELLED
+
+  // История посещений (через Registration)
+  // Сертификаты (через Certificates)
+
+  @@index([userId])
+  @@index([institute, group])
+}
+
+model OrganizerProfile {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName          String
+  position          String?  // Должность
+  department        String?  // Кафедра
+  
+  // Информация об организации
+  organizationName  String
+  organizationInfo  String?  // Описание организации
+  contacts          String?  // JSON или текст с контактами (телефон, почта, сайт)
+  logoUrl           String?
+
+  // Связь с мероприятиями
+  events            Event[]
+
+  @@index([userId])
+  @@index([organizationName])
+}
+
+// ==========================================
+// EVENTS & CONTENT
+// ==========================================
+
+model Event {
+  id            String      @id @default(uuid())
+  title         String
+  description   String      @db.Text
+  type          String      // Тип мероприятия (лекция, хакатон, спорт и т.д.)
+  
+  // Организатор
+  organizerId   String
+  organizer     OrganizerProfile @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+  
+  // Время и место
+  startAt       DateTime
+  endAt         DateTime
+  address       String
+  latitude      Decimal     @db.Decimal(9, 6) // Яндекс Карты
+  longitude     Decimal     @db.Decimal(9, 6)
+  
+  // Лимиты и статус
+  capacity      Int?        // null = без ограничений
+  status        EventStatus @default(MODERATION)
+  
+  // Коммуникация (вместо форума)
+  contactEmail  String?
+  contactPhone  String?
+  chatLink      String?     // Ссылка на внешний чат (TG, VK, Discord)
+  
+  // Медиа
+  coverImageUrl String?
+  images        EventImage[]
+  
+  // Участники
+  registrations Registration[]
+  
+  // Модерация
+  moderatedBy   String?     // ID админа
+  moderatedAt   DateTime?
+  rejectionReason String?   @db.Text
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?   // Soft delete
+
+  @@index([status, startAt])
+  @@index([organizerId])
+  @@index([type])
+  @@index([latitude, longitude])
+}
+
+model EventImage {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  url       String   // Ссылка на S3/MinIO
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+}
+
+// ==========================================
+// REGISTRATIONS & ATTENDANCE
+// ==========================================
+
+model Registration {
+  id            String             @id @default(uuid())
+  eventId       String
+  event         Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  status        RegistrationStatus @default(CONFIRMED)
+  registeredAt  DateTime           @default(now())
+  cancelledAt   DateTime?
+  
+  // Чек-ин
+  checkedInAt   DateTime?
+  checkInSource String?            // 'QR_SCAN', 'MANUAL'
+
+  // Сертификат
+  certificate   Certificate?
+
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@index([userId, status])
+}
+
+model Certificate {
+  id            String           @id @default(uuid())
+  registrationId String          @unique
+  registration  Registration     @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  
+  fileUrl       String           // Ссылка на PDF/JPG сертификат в хранилище
+  issuedAt      DateTime         @default(now())
+  status        CertificateStatus @default(PENDING)
+  
+  // Кто выдал (для аудита, дублируем имя организатора на момент выдачи)
+  issuerName    String
+
+  @@index([registrationId])
+}
+
+// ==========================================
+// SYSTEM & UTILS
+// ==========================================
+
+model PushSubscription {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model InstituteDict {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  code      String?  @unique
+  isActive  Boolean  @default(true)
+  
+  @@index([isActive])
+}
