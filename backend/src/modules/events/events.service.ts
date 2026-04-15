@@ -47,12 +47,10 @@ export class EventsService {
     ]);
 
     return {
-      data: data.map((e) => ({
+      data: data.map(({ _count, images, ...e }) => ({
         ...e,
-        registeredCount: e._count.registrations,
-        imageUrl: e.images[0]?.url ?? e.coverImageUrl ?? null,
-        _count: undefined,
-        images: undefined,
+        registeredCount: _count.registrations,
+        imageUrl: images[0]?.url ?? e.coverImageUrl ?? null,
       })),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
@@ -82,12 +80,12 @@ export class EventsService {
       isCheckedIn = !!reg?.checkedInAt;
     }
 
+    const { _count, ...eventData } = event;
     return {
-      ...event,
-      registeredCount: event._count.registrations,
+      ...eventData,
+      registeredCount: _count.registrations,
       isRegistered,
       isCheckedIn,
-      _count: undefined,
     };
   }
 
@@ -183,7 +181,7 @@ export class EventsService {
     ]);
 
     return {
-      data: data.map((e) => ({ ...e, registeredCount: e._count.registrations, _count: undefined })),
+      data: data.map(({ _count, ...e }) => ({ ...e, registeredCount: _count.registrations })),
       pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     };
   }

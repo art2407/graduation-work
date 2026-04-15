@@ -43,6 +43,6 @@ export class RegistrationController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.registrationService.getAttendees(eventId, userId, status, page, limit);
+    return this.registrationService.getAttendees(eventId, userId, role, status, page, limit);
   }
 }

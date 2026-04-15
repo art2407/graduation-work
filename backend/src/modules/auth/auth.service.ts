@@ -158,8 +158,9 @@ export class AuthService {
       .update(rawRefresh)
       .digest('hex');
 
+    const refreshDays = parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN ?? '7d') || 7;
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    expiresAt.setDate(expiresAt.getDate() + refreshDays);
 
     await this.prisma.refreshToken.create({
       data: { userId: user.id, tokenHash, expiresAt },

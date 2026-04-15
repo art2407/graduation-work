@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Paper, Avatar, Chip, Divider, Stack, Skeleton, Alert,
-  List, ListItem, ListItemText, ListItemSecondaryAction, Tab, Tabs,
+  List, ListItemButton, ListItemText, ListItemSecondaryAction, Tab, Tabs,
 } from '@mui/material';
 import { CalendarToday } from '@mui/icons-material';
 import { useState } from 'react';
@@ -139,9 +139,8 @@ export default function ProfilePage() {
               ) : (
                 <List>
                   {history.data.map((reg: any) => (
-                    <ListItem
+                    <ListItemButton
                       key={reg.id}
-                      button
                       onClick={() => navigate(`/events/${reg.event.id}`)}
                       divider
                     >
@@ -164,7 +163,7 @@ export default function ProfilePage() {
                           size="small"
                         />
                       </ListItemSecondaryAction>
-                    </ListItem>
+                    </ListItemButton>
                   ))}
                 </List>
               )}

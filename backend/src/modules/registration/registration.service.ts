@@ -74,14 +74,16 @@ export class RegistrationService {
     return { message: 'Registration cancelled successfully' };
   }
 
-  async getAttendees(eventId: string, organizerUserId: string, status?: string, page = 1, limit = 50) {
-    const profile = await this.prisma.organizerProfile.findUnique({
-      where: { userId: organizerUserId },
-    });
-
+  async getAttendees(eventId: string, callerUserId: string, callerRole: string, status?: string, page = 1, limit = 50) {
     const event = await this.prisma.event.findUnique({ where: { id: eventId } });
     if (!event) throw new NotFoundException('Event not found');
-    if (!profile || event.organizerId !== profile.id) throw new ForbiddenException('Access denied');
+
+    if (callerRole !== 'ADMIN') {
+      const profile = await this.prisma.organizerProfile.findUnique({
+        where: { userId: callerUserId },
+      });
+      if (!profile || event.organizerId !== profile.id) throw new ForbiddenException('Access denied');
+    }
 
     const skip = (page - 1) * limit;
     const where: any = { eventId };

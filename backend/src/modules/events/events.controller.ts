@@ -1,10 +1,11 @@
 import {
-  Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Request,
+  Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { EventsService } from './events.service';
 import { CreateEventDto, UpdateEventDto, EventQueryDto } from './dto/create-event.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/guards/optional-jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -16,9 +17,9 @@ export class EventsController {
   constructor(private eventsService: EventsService) {}
 
   @Get()
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get events list with filtering' })
-  findAll(@Query() query: EventQueryDto, @Request() req: any) {
-    const userId = req.user?.id;
+  findAll(@Query() query: EventQueryDto, @CurrentUser('id') userId?: string) {
     return this.eventsService.findAll(query, userId);
   }
 
@@ -36,9 +37,10 @@ export class EventsController {
   }
 
   @Get(':id')
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiOperation({ summary: 'Get event details' })
-  findOne(@Param('id') id: string, @Request() req: any) {
-    return this.eventsService.findOne(id, req.user?.id);
+  findOne(@Param('id') id: string, @CurrentUser('id') userId?: string) {
+    return this.eventsService.findOne(id, userId);
   }
 
   @Post()
