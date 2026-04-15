@@ -11,7 +11,13 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@emotion/react": "^11.11.3",
+    "@emotion/styled": "^11.11.0",
+    "@mui/icons-material": "^5.15.3",
+    "@mui/material": "^5.15.3",
     "@tanstack/react-query": "^5.17.9",
+    "react-hook-form": "^7.49.3",
+    "@hookform/resolvers": "^3.3.4",
     "@yandex/ymaps3-types": "^0.0.8",
     "axios": "^1.6.5",
     "date-fns": "^3.2.0",

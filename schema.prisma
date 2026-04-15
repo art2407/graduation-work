@@ -45,11 +45,6 @@ enum RegistrationStatus {
   ATTENDED    // Посетил (сделал чек-ин)
 }
 
-enum CertificateStatus {
-  PENDING     // Ожидает загрузки организатором
-  ISSUED      // Выдан (файл загружен)
-}
-
 // ==========================================
 // USERS & PROFILES
 // ==========================================
@@ -209,27 +204,9 @@ model Registration {
   checkedInAt   DateTime?
   checkInSource String?            // 'QR_SCAN', 'MANUAL'
 
-  // Сертификат
-  certificate   Certificate?
-
   @@unique([eventId, userId])
   @@index([eventId, status])
   @@index([userId, status])
-}
-
-model Certificate {
-  id            String           @id @default(uuid())
-  registrationId String          @unique
-  registration  Registration     @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-  
-  fileUrl       String           // Ссылка на PDF/JPG сертификат в хранилище
-  issuedAt      DateTime         @default(now())
-  status        CertificateStatus @default(PENDING)
-  
-  // Кто выдал (для аудита, дублируем имя организатора на момент выдачи)
-  issuerName    String
-
-  @@index([registrationId])
 }
 
 // ==========================================

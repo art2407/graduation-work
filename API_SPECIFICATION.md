@@ -545,51 +545,7 @@ Check-in attendee by scanning QR (Student)
 
 ---
 
-## 6. Certificates Module
-
-### GET `/users/me/certificates`
-Get current user certificates (Student)
-
-**Headers:** `Authorization: Bearer <token>`
-
-**Response (200):**
-```json
-{
-  "certificates": [
-    {
-      "id": "uuid",
-      "eventName": "string",
-      "eventDate": "ISO8601",
-      "certificateUrl": "string",
-      "issuedAt": "ISO8601"
-    }
-  ]
-}
-```
-
----
-
-### POST `/events/:id/certificates`
-Upload certificates for event attendees (Organizer, owner only)
-
-**Headers:** `Authorization: Bearer <token>`
-**Content-Type:** `multipart/form-data`
-
-**Request Body:**
-- `certificates`: array of PDF/image files
-- `attendeeIds`: array of UUIDs (matching order)
-
-**Response (201):**
-```json
-{
-  "message": "Certificates uploaded successfully",
-  "count": "number"
-}
-```
-
----
-
-## 7. Admin Module
+## 6. Admin Module
 
 ### GET `/admin/moderation`
 Get events queue for moderation (Admin only)
@@ -719,7 +675,7 @@ Export analytics report (Admin only)
 
 ---
 
-## 8. References Module
+## 7. References Module
 
 ### GET `/references/institutes`
 Get institutes dictionary

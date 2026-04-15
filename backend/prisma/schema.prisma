@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum UserRole {
+  STUDENT
+  ORGANIZER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+  DELETED
+}
+
+enum StudyStatus {
+  ACTIVE
+  GRADUATED
+  EXPELLED
+}
+
+enum EventStatus {
+  DRAFT
+  MODERATION
+  PUBLISHED
+  REJECTED
+  CANCELLED
+  COMPLETED
+  ARCHIVED
+}
+
+enum RegistrationStatus {
+  CONFIRMED
+  CANCELLED
+  NO_SHOW
+  ATTENDED
+}
+
+// ==========================================
+// USERS & PROFILES
+// ==========================================
+
+model User {
+  id              String     @id @default(uuid())
+  login           String     @unique
+  email           String     @unique
+  passwordHash    String
+  role            UserRole   @default(STUDENT)
+  status          UserStatus @default(ACTIVE)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  lastLoginAt     DateTime?
+  deletedAt       DateTime?
+
+  studentProfile   StudentProfile?
+  organizerProfile OrganizerProfile?
+  registrations    Registration[]
+  pushSubscriptions PushSubscription[]
+  refreshTokens    RefreshToken[]
+
+  @@index([email])
+  @@index([role, status])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model StudentProfile {
+  id          String      @id @default(uuid())
+  userId      String      @unique
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName    String
+  birthDate   DateTime?
+  phone       String?
+  avatarUrl   String?
+
+  instituteId String?
+  institute   InstituteDict? @relation(fields: [instituteId], references: [id])
+  group       String?
+  yearOfStudy Int?
+  studyStatus StudyStatus @default(ACTIVE)
+
+  @@index([userId])
+  @@index([instituteId])
+}
+
+model OrganizerProfile {
+  id               String  @id @default(uuid())
+  userId           String  @unique
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fullName         String
+  position         String?
+  department       String?
+  organizationName String
+  organizationInfo String?
+  contacts         String?
+  logoUrl          String?
+
+  events           Event[]
+
+  @@index([userId])
+}
+
+// ==========================================
+// EVENTS
+// ==========================================
+
+model Event {
+  id          String      @id @default(uuid())
+  title       String
+  description String      @db.Text
+  type        String
+
+  organizerId String
+  organizer   OrganizerProfile @relation(fields: [organizerId], references: [id], onDelete: Restrict)
+
+  startAt              DateTime
+  endAt                DateTime?
+  registrationDeadline DateTime?
+  address              String
+  latitude             Decimal   @db.Decimal(9, 6)
+  longitude            Decimal   @db.Decimal(9, 6)
+
+  instituteId String?
+  institute   InstituteDict? @relation(fields: [instituteId], references: [id])
+
+  capacity    Int?
+  status      EventStatus @default(MODERATION)
+
+  contactEmail  String?
+  contactPhone  String?
+  chatLink      String?
+
+  coverImageUrl String?
+  images        EventImage[]
+  registrations Registration[]
+
+  moderatedBy     String?
+  moderatedAt     DateTime?
+  rejectionReason String?   @db.Text
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+
+  @@index([status, startAt])
+  @@index([organizerId])
+  @@index([type])
+  @@index([instituteId])
+}
+
+model EventImage {
+  id        String   @id @default(uuid())
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  url       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
+}
+
+// ==========================================
+// REGISTRATIONS & ATTENDANCE
+// ==========================================
+
+model Registration {
+  id           String             @id @default(uuid())
+  eventId      String
+  event        Event              @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status       RegistrationStatus @default(CONFIRMED)
+  registeredAt DateTime           @default(now())
+  cancelledAt  DateTime?
+  checkedInAt  DateTime?
+  checkInSource String?
+
+  @@unique([eventId, userId])
+  @@index([eventId, status])
+  @@index([userId, status])
+}
+
+// ==========================================
+// SYSTEM
+// ==========================================
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model InstituteDict {
+  id             String           @id @default(uuid())
+  name           String           @unique
+  code           String?          @unique
+  isActive       Boolean          @default(true)
+  studentProfiles StudentProfile[]
+  events          Event[]
+
+  @@index([isActive])
+}
