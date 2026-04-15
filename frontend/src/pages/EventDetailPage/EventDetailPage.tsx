@@ -6,7 +6,7 @@ import {
 } from '@mui/material';
 import {
   CalendarToday, LocationOn, People, Email, Phone, Chat, ArrowBack,
-  CheckCircle, QrCode,
+  CheckCircle,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';

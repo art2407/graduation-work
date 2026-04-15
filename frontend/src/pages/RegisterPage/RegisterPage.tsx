@@ -5,7 +5,6 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField, Button, Alert, Link, CircularProgress,
   ToggleButton, ToggleButtonGroup, MenuItem, Select, FormControl, InputLabel,
-  FormHelperText,
 } from '@mui/material';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -37,7 +36,7 @@ export default function RegisterPage() {
     queryFn: () => referencesApi.getInstitutes().then((r) => r.data.institutes),
   });
 
-  const { register, handleSubmit, control, formState: { errors, isSubmitting }, setValue } =
+  const { register, handleSubmit, control, formState: { errors, isSubmitting } } =
     useForm<FormData>({
       resolver: zodResolver(schema),
       defaultValues: { role: 'STUDENT' },

@@ -3,12 +3,11 @@ import {
   Box, Typography, Paper, Avatar, Chip, Divider, Stack, Skeleton, Alert,
   List, ListItem, ListItemText, ListItemSecondaryAction, Tab, Tabs,
 } from '@mui/material';
-import { CalendarToday, CheckCircle, Cancel } from '@mui/icons-material';
+import { CalendarToday } from '@mui/icons-material';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { usersApi } from '../../shared/api/client';
-import { useAuthStore } from '../../shared/store/auth.store';
 import { useNavigate } from 'react-router-dom';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -23,7 +22,6 @@ const REG_STATUS: Record<string, { label: string; color: any }> = {
 };
 
 export default function ProfilePage() {
-  const { user } = useAuthStore();
   const navigate = useNavigate();
   const [tab, setTab] = useState(0);
 

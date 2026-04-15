@@ -6,7 +6,7 @@ import {
   Box, Paper, Typography, TextField, Button, Alert, Link, CircularProgress,
 } from '@mui/material';
 import { useState } from 'react';
-import { authApi, usersApi } from '../../shared/api/client';
+import { authApi } from '../../shared/api/client';
 import { useAuthStore } from '../../shared/store/auth.store';
 
 const schema = z.object({
