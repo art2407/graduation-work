@@ -76,7 +76,7 @@ export class EventsService {
       const reg = await this.prisma.registration.findUnique({
         where: { eventId_userId: { eventId: id, userId } },
       });
-      isRegistered = !!reg && reg.status === 'CONFIRMED';
+      isRegistered = !!reg && (reg.status === 'CONFIRMED' || reg.status === 'ATTENDED');
       isCheckedIn = !!reg?.checkedInAt;
     }
 
@@ -161,19 +161,22 @@ export class EventsService {
     return { message: 'Event deleted successfully' };
   }
 
-  async getMyEvents(organizerUserId: string, page = 1, limit = 20) {
+  async getMyEvents(organizerUserId: string, page: any = 1, limit: any = 20) {
+    const p = Math.max(1, parseInt(page) || 1);
+    const l = Math.max(1, parseInt(limit) || 20);
+
     const profile = await this.prisma.organizerProfile.findUnique({
       where: { userId: organizerUserId },
     });
 
     if (!profile) throw new ForbiddenException('Organizer profile not found');
 
-    const skip = (page - 1) * limit;
+    const skip = (p - 1) * l;
     const [data, total] = await Promise.all([
       this.prisma.event.findMany({
         where: { organizerId: profile.id, deletedAt: null },
         skip,
-        take: limit,
+        take: l,
         orderBy: { createdAt: 'desc' },
         include: { _count: { select: { registrations: true } } },
       }),
@@ -182,7 +185,7 @@ export class EventsService {
 
     return {
       data: data.map(({ _count, ...e }) => ({ ...e, registeredCount: _count.registrations })),
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      pagination: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
     };
   }
 

@@ -57,6 +57,14 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: 'admin',
+        element: (
+          <ProtectedRoute roles={['ADMIN']}>
+            <Suspense fallback={<Loader />}><AdminPage /></Suspense>
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
   {
@@ -66,13 +74,5 @@ export const router = createBrowserRouter([
   {
     path: '/register',
     element: <Suspense fallback={<Loader />}><RegisterPage /></Suspense>,
-  },
-  {
-    path: '/admin',
-    element: (
-      <ProtectedRoute roles={['ADMIN']}>
-        <Suspense fallback={<Loader />}><AdminPage /></Suspense>
-      </ProtectedRoute>
-    ),
   },
 ]);
