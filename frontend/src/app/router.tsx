@@ -11,6 +11,7 @@ const RegisterPage = lazy(() => import('../pages/RegisterPage/RegisterPage'));
 const ProfilePage = lazy(() => import('../pages/ProfilePage/ProfilePage'));
 const AdminPage = lazy(() => import('../pages/AdminPage/AdminPage'));
 const CreateEventPage = lazy(() => import('../pages/CreateEventPage/CreateEventPage'));
+const OrganizerEventsPage = lazy(() => import('../pages/OrganizerEventsPage/OrganizerEventsPage'));
 
 const Loader = () => (
   <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -45,6 +46,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <Suspense fallback={<Loader />}><ProfilePage /></Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'my-events',
+        element: (
+          <ProtectedRoute roles={['ORGANIZER']}>
+            <Suspense fallback={<Loader />}><OrganizerEventsPage /></Suspense>
           </ProtectedRoute>
         ),
       },

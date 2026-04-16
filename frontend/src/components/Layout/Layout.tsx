@@ -71,6 +71,11 @@ export default function Layout() {
                   <Person sx={{ mr: 1 }} fontSize="small" /> Профиль
                 </MenuItem>
                 {user.role === 'ORGANIZER' && (
+                  <MenuItem onClick={() => { navigate('/my-events'); setAnchorEl(null); }}>
+                    Мои мероприятия
+                  </MenuItem>
+                )}
+                {user.role === 'ORGANIZER' && (
                   <MenuItem onClick={() => { navigate('/events/new'); setAnchorEl(null); }}>
                     Создать мероприятие
                   </MenuItem>

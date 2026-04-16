@@ -78,13 +78,15 @@ export class UsersService {
     return user;
   }
 
-  async getEventsHistory(userId: string, page = 1, limit = 20) {
-    const skip = (page - 1) * limit;
+  async getEventsHistory(userId: string, page: any = 1, limit: any = 20) {
+    const p = Math.max(1, parseInt(page) || 1);
+    const l = Math.max(1, parseInt(limit) || 20);
+    const skip = (p - 1) * l;
     const [data, total] = await Promise.all([
       this.prisma.registration.findMany({
         where: { userId },
         skip,
-        take: limit,
+        take: l,
         orderBy: { registeredAt: 'desc' },
         include: {
           event: {
@@ -100,7 +102,7 @@ export class UsersService {
 
     return {
       data,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      pagination: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
     };
   }
 }

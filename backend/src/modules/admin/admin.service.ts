@@ -6,13 +6,15 @@ import { EventStatus, UserStatus, UserRole } from '@prisma/client';
 export class AdminService {
   constructor(private prisma: PrismaService) {}
 
-  async getModerationQueue(page = 1, limit = 20) {
-    const skip = (page - 1) * limit;
+  async getModerationQueue(page: any = 1, limit: any = 20) {
+    const p = Math.max(1, parseInt(page) || 1);
+    const l = Math.max(1, parseInt(limit) || 20);
+    const skip = (p - 1) * l;
     const [data, total] = await Promise.all([
       this.prisma.event.findMany({
         where: { status: EventStatus.MODERATION, deletedAt: null },
         skip,
-        take: limit,
+        take: l,
         orderBy: { createdAt: 'asc' },
         include: {
           organizer: { select: { organizationName: true, contacts: true } },
@@ -23,7 +25,7 @@ export class AdminService {
 
     return {
       data,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      pagination: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
     };
   }
 
@@ -51,8 +53,10 @@ export class AdminService {
     return { message: `Event ${action === 'approve' ? 'approved' : 'rejected'}`, status };
   }
 
-  async getUsers(filters: { role?: UserRole; status?: UserStatus; search?: string }, page = 1, limit = 20) {
-    const skip = (page - 1) * limit;
+  async getUsers(filters: { role?: UserRole; status?: UserStatus; search?: string }, page: any = 1, limit: any = 20) {
+    const p = Math.max(1, parseInt(page) || 1);
+    const l = Math.max(1, parseInt(limit) || 20);
+    const skip = (p - 1) * l;
     const where: any = { deletedAt: null };
 
     if (filters.role) where.role = filters.role;
@@ -68,7 +72,7 @@ export class AdminService {
       this.prisma.user.findMany({
         where,
         skip,
-        take: limit,
+        take: l,
         orderBy: { createdAt: 'desc' },
         select: {
           id: true, login: true, email: true, role: true, status: true, createdAt: true, lastLoginAt: true,
@@ -81,7 +85,7 @@ export class AdminService {
 
     return {
       data,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      pagination: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
     };
   }
 

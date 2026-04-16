@@ -74,7 +74,9 @@ export class RegistrationService {
     return { message: 'Registration cancelled successfully' };
   }
 
-  async getAttendees(eventId: string, callerUserId: string, callerRole: string, status?: string, page = 1, limit = 50) {
+  async getAttendees(eventId: string, callerUserId: string, callerRole: string, status?: string, page: any = 1, limit: any = 50) {
+    const p = Math.max(1, parseInt(page) || 1);
+    const l = Math.max(1, parseInt(limit) || 50);
     const event = await this.prisma.event.findUnique({ where: { id: eventId } });
     if (!event) throw new NotFoundException('Event not found');
 
@@ -85,7 +87,7 @@ export class RegistrationService {
       if (!profile || event.organizerId !== profile.id) throw new ForbiddenException('Access denied');
     }
 
-    const skip = (page - 1) * limit;
+    const skip = (p - 1) * l;
     const where: any = { eventId };
     if (status) where.status = status as RegistrationStatus;
 
@@ -93,7 +95,7 @@ export class RegistrationService {
       this.prisma.registration.findMany({
         where,
         skip,
-        take: limit,
+        take: l,
         orderBy: { registeredAt: 'desc' },
         include: {
           user: {
@@ -109,7 +111,7 @@ export class RegistrationService {
 
     return {
       data,
-      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
+      pagination: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
     };
   }
 }
