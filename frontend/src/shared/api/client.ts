@@ -69,11 +69,16 @@ export const registrationApi = {
     apiClient.get(`/events/${eventId}/attendees`, { params }),
 };
 
-// Attendance
+// Attendance / QR
 export const attendanceApi = {
-  generateQr: (eventId: string) => apiClient.post('/attendance/generate-qr', { eventId }),
-  checkIn: (eventId: string, qrToken: string) =>
-    apiClient.post('/attendance/check', { eventId, qrToken }),
+  getStudentQr: (registrationId: string) =>
+    apiClient.get<{ qrDataUrl: string }>(`/attendance/qr/${registrationId}`),
+  scanQr: (token: string) =>
+    apiClient.post<{
+      alreadyCheckedIn: boolean;
+      checkedInAt: string | null;
+      participant: { name: string; group: string; institute: string };
+    }>('/attendance/scan', { token }),
 };
 
 // Admin
@@ -84,6 +89,18 @@ export const adminApi = {
   getUsers: (params?: any) => apiClient.get('/admin/users', { params }),
   updateUser: (id: string, data: any) => apiClient.put(`/admin/users/${id}`, data),
   getAnalytics: (params?: any) => apiClient.get('/admin/analytics', { params }),
+};
+
+// University administration
+export const universityApi = {
+  getDashboard: (instituteId?: string) =>
+    apiClient.get<any>('/university/dashboard', { params: { instituteId } }),
+  getEvents: (params?: any) =>
+    apiClient.get<any>('/university/events', { params }),
+  getAttendees: (eventId: string, params?: any) =>
+    apiClient.get<any>(`/university/events/${eventId}/attendees`, { params }),
+  getExportUrl: (eventId: string) =>
+    `${API_BASE}/university/events/${eventId}/attendees/export`,
 };
 
 // References

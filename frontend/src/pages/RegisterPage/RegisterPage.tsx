@@ -20,7 +20,10 @@ const schema = z.object({
   organizationName: z.string().optional(),
   instituteId: z.string().optional(),
   group: z.string().optional(),
-  yearOfStudy: z.coerce.number().min(1).max(6).optional(),
+  yearOfStudy: z.preprocess(
+    (val) => (val === '' ? undefined : val),
+    z.coerce.number().min(1).max(6).optional()
+  ),
 });
 
 type FormData = z.infer<typeof schema>;

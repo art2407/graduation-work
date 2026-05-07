@@ -2,12 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Paper, Avatar, Chip, Divider, Stack, Skeleton, Alert,
   List, ListItemButton, ListItemText, ListItemSecondaryAction, Tab, Tabs,
+  Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress,
+  IconButton,
 } from '@mui/material';
-import { CalendarToday } from '@mui/icons-material';
+import { CalendarToday, QrCode, Close } from '@mui/icons-material';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { usersApi } from '../../shared/api/client';
+import { usersApi, attendanceApi } from '../../shared/api/client';
 import { useNavigate } from 'react-router-dom';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -21,9 +23,52 @@ const REG_STATUS: Record<string, { label: string; color: any }> = {
   NO_SHOW: { label: 'Не пришёл', color: 'warning' },
 };
 
+function QrModal({ registrationId, eventTitle, onClose }: {
+  registrationId: string;
+  eventTitle: string;
+  onClose: () => void;
+}) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['qr', registrationId],
+    queryFn: () => attendanceApi.getStudentQr(registrationId).then((r) => r.data.qrDataUrl),
+  });
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        QR-код для входа
+        <IconButton onClick={onClose} size="small"><Close /></IconButton>
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" mb={2} textAlign="center">
+          {eventTitle}
+        </Typography>
+        {isLoading && (
+          <Box display="flex" justifyContent="center" p={4}>
+            <CircularProgress />
+          </Box>
+        )}
+        {error && <Alert severity="error">Не удалось загрузить QR-код</Alert>}
+        {data && (
+          <Box textAlign="center">
+            <img src={data} alt="QR код" style={{ width: '100%', maxWidth: 300, borderRadius: 8 }} />
+            <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+              Покажите этот код организатору на входе
+            </Typography>
+          </Box>
+        )}
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose} variant="contained" fullWidth>Закрыть</Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 export default function ProfilePage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState(0);
+  const [qrModal, setQrModal] = useState<{ id: string; title: string } | null>(null);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['me'],
@@ -88,12 +133,6 @@ export default function ProfilePage() {
                   <Typography>{profile.studentProfile.yearOfStudy}</Typography>
                 </Box>
               )}
-              {profile.studentProfile.phone && (
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Телефон</Typography>
-                  <Typography>{profile.studentProfile.phone}</Typography>
-                </Box>
-              )}
             </Stack>
           </>
         )}
@@ -110,12 +149,6 @@ export default function ProfilePage() {
                 <Box>
                   <Typography variant="caption" color="text.secondary">Должность</Typography>
                   <Typography>{profile.organizerProfile.position}</Typography>
-                </Box>
-              )}
-              {profile.organizerProfile.contacts && (
-                <Box>
-                  <Typography variant="caption" color="text.secondary">Контакты</Typography>
-                  <Typography>{profile.organizerProfile.contacts}</Typography>
                 </Box>
               )}
             </Stack>
@@ -143,6 +176,7 @@ export default function ProfilePage() {
                       key={reg.id}
                       onClick={() => navigate(`/events/${reg.event.id}`)}
                       divider
+                      sx={{ pr: reg.status === 'CONFIRMED' ? 14 : 8 }}
                     >
                       <ListItemText
                         primary={reg.event.title}
@@ -152,16 +186,31 @@ export default function ProfilePage() {
                             <span>
                               {format(new Date(reg.event.startAt), 'd MMMM yyyy', { locale: ru })}
                             </span>
-                            <span>• {reg.event.organizer.organizationName}</span>
+                            <span>• {reg.event.organizer?.organizationName}</span>
                           </Stack>
                         }
                       />
                       <ListItemSecondaryAction>
-                        <Chip
-                          label={REG_STATUS[reg.status]?.label ?? reg.status}
-                          color={REG_STATUS[reg.status]?.color ?? 'default'}
-                          size="small"
-                        />
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          {reg.status === 'CONFIRMED' && (
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQrModal({ id: reg.id, title: reg.event.title });
+                              }}
+                              title="Показать QR-код"
+                            >
+                              <QrCode />
+                            </IconButton>
+                          )}
+                          <Chip
+                            label={REG_STATUS[reg.status]?.label ?? reg.status}
+                            color={REG_STATUS[reg.status]?.color ?? 'default'}
+                            size="small"
+                          />
+                        </Stack>
                       </ListItemSecondaryAction>
                     </ListItemButton>
                   ))}
@@ -170,6 +219,14 @@ export default function ProfilePage() {
             </Paper>
           )}
         </Box>
+      )}
+
+      {qrModal && (
+        <QrModal
+          registrationId={qrModal.id}
+          eventTitle={qrModal.title}
+          onClose={() => setQrModal(null)}
+        />
       )}
     </Box>
   );

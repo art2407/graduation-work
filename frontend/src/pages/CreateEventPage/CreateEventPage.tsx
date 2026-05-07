@@ -18,12 +18,9 @@ const schema = z.object({
   endAt: z.string().optional(),
   registrationDeadline: z.string().optional(),
   address: z.string().min(3, 'Укажите адрес'),
-  latitude: z.coerce.number().min(-90).max(90),
-  longitude: z.coerce.number().min(-180).max(180),
   capacity: z.coerce.number().min(1).optional().or(z.literal('')),
   instituteId: z.string().optional(),
   contactEmail: z.string().email().optional().or(z.literal('')),
-  contactPhone: z.string().optional(),
   chatLink: z.string().url().optional().or(z.literal('')),
 });
 
@@ -46,7 +43,7 @@ export default function CreateEventPage() {
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } =
     useForm<FormData>({
       resolver: zodResolver(schema),
-      defaultValues: { latitude: 55.751244, longitude: 37.618423 },
+      defaultValues: {},
     });
 
   const onSubmit = async (data: FormData) => {
@@ -54,6 +51,8 @@ export default function CreateEventPage() {
     try {
       const payload = {
         ...data,
+        latitude: 55.751244,
+        longitude: 37.618423,
         capacity: data.capacity || undefined,
         contactEmail: data.contactEmail || undefined,
         chatLink: data.chatLink || undefined,
@@ -139,20 +138,9 @@ export default function CreateEventPage() {
               <TextField {...register('address')} label="Адрес проведения" fullWidth
                 error={!!errors.address} helperText={errors.address?.message} />
             </Grid>
-            <Grid item xs={6}>
-              <TextField {...register('latitude')} label="Широта" type="number" fullWidth
-                inputProps={{ step: 'any' }} error={!!errors.latitude} />
-            </Grid>
-            <Grid item xs={6}>
-              <TextField {...register('longitude')} label="Долгота" type="number" fullWidth
-                inputProps={{ step: 'any' }} error={!!errors.longitude} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid item xs={12}>
               <TextField {...register('contactEmail')} label="Email для связи" type="email" fullWidth
-                error={!!errors.contactEmail} />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField {...register('contactPhone')} label="Телефон для связи" fullWidth />
+                error={!!errors.contactEmail} helperText={errors.contactEmail?.message} />
             </Grid>
             <Grid item xs={12}>
               <TextField {...register('chatLink')} label="Ссылка на чат (TG/VK)" fullWidth

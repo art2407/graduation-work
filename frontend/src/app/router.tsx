@@ -12,6 +12,8 @@ const ProfilePage = lazy(() => import('../pages/ProfilePage/ProfilePage'));
 const AdminPage = lazy(() => import('../pages/AdminPage/AdminPage'));
 const CreateEventPage = lazy(() => import('../pages/CreateEventPage/CreateEventPage'));
 const OrganizerEventsPage = lazy(() => import('../pages/OrganizerEventsPage/OrganizerEventsPage'));
+const QrScannerPage = lazy(() => import('../pages/QrScannerPage/QrScannerPage'));
+const UniversityPage = lazy(() => import('../pages/UniversityPage/UniversityPage'));
 
 const Loader = () => (
   <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -54,6 +56,22 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute roles={['ORGANIZER']}>
             <Suspense fallback={<Loader />}><OrganizerEventsPage /></Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'scan',
+        element: (
+          <ProtectedRoute roles={['ORGANIZER']}>
+            <Suspense fallback={<Loader />}><QrScannerPage /></Suspense>
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'university',
+        element: (
+          <ProtectedRoute roles={['DEAN', 'ADMIN']}>
+            <Suspense fallback={<Loader />}><UniversityPage /></Suspense>
           </ProtectedRoute>
         ),
       },

@@ -1,4 +1,4 @@
-export type UserRole = 'STUDENT' | 'ORGANIZER' | 'ADMIN';
+export type UserRole = 'STUDENT' | 'ORGANIZER' | 'ADMIN' | 'DEAN';
 export type UserStatus = 'ACTIVE' | 'BLOCKED';
 export type EventStatus = 'DRAFT' | 'MODERATION' | 'PUBLISHED' | 'REJECTED' | 'CANCELLED' | 'COMPLETED';
 export type RegistrationStatus = 'CONFIRMED' | 'CANCELLED' | 'NO_SHOW' | 'ATTENDED';

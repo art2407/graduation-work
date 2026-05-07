@@ -200,7 +200,8 @@ model Registration {
   registeredAt  DateTime           @default(now())
   cancelledAt   DateTime?
   
-  // Чек-ин
+  // QR-чек-ин
+  qrToken       String?   @unique  // HMAC-подписанный токен для чек-ина
   checkedInAt   DateTime?
   checkInSource String?            // 'QR_SCAN', 'MANUAL'
 

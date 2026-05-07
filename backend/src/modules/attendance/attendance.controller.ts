@@ -1,5 +1,8 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import {
+  Controller, Get, Post, Param, Body, UseGuards, Res,
+} from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Response } from 'express';
 import { AttendanceService } from './attendance.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -9,35 +12,40 @@ import { UserRole } from '@prisma/client';
 import { IsString, IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-class GenerateQrDto {
-  @ApiProperty() @IsString() @IsNotEmpty() eventId: string;
+class ScanQrDto {
+  @ApiProperty({ description: 'Необработанный QR-токен, считанный с экрана студента' })
+  @IsString() @IsNotEmpty()
+  token: string;
 }
 
-class CheckInDto {
-  @ApiProperty() @IsString() @IsNotEmpty() eventId: string;
-  @ApiProperty() @IsString() @IsNotEmpty() qrToken: string;
-}
-
-@ApiTags('Attendance')
+@ApiTags('Attendance / QR Check-in')
 @Controller('attendance')
 export class AttendanceController {
   constructor(private attendanceService: AttendanceService) {}
 
-  @Post('generate-qr')
+  @Get('qr/:registrationId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Получить QR-код для регистрации (студент)' })
+  @ApiResponse({ status: 200, description: 'PNG Data URL строка QR-кода' })
+  async getStudentQr(
+    @Param('registrationId') registrationId: string,
+    @CurrentUser('id') userId: string,
+    @Res() res: Response,
+  ) {
+    const dataUrl = await this.attendanceService.getStudentQr(registrationId, userId);
+    res.json({ qrDataUrl: dataUrl });
+  }
+
+  @Post('scan')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ORGANIZER)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate QR code for event check-in (Organizer only)' })
-  generateQr(@CurrentUser('id') userId: string, @Body() dto: GenerateQrDto) {
-    return this.attendanceService.generateQr(dto.eventId, userId);
-  }
-
-  @Post('check')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.STUDENT)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Check-in by QR token (Student)' })
-  checkIn(@CurrentUser('id') userId: string, @Body() dto: CheckInDto) {
-    return this.attendanceService.checkIn(dto.qrToken, userId);
+  @ApiOperation({ summary: 'Отметить участника по QR-коду (организатор)' })
+  scanQr(
+    @CurrentUser('id') organizerUserId: string,
+    @Body() dto: ScanQrDto,
+  ) {
+    return this.attendanceService.scanQr(dto.token, organizerUserId);
   }
 }

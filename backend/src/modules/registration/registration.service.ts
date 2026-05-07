@@ -3,10 +3,14 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventStatus, RegistrationStatus } from '@prisma/client';
+import { AttendanceService } from '../attendance/attendance.service';
 
 @Injectable()
 export class RegistrationService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private attendanceService: AttendanceService,
+  ) {}
 
   async register(eventId: string, userId: string) {
     const event = await this.prisma.event.findUnique({ where: { id: eventId, deletedAt: null } });
@@ -45,6 +49,20 @@ export class RegistrationService {
     const registration = await this.prisma.registration.create({
       data: { eventId, userId, status: RegistrationStatus.CONFIRMED },
     });
+
+    // Генерируем QR-токен для участника
+    const studentProfile = await this.prisma.studentProfile.findUnique({
+      where: { userId },
+      include: { institute: { select: { name: true } } },
+    });
+    if (studentProfile) {
+      await this.attendanceService.generateTokenForRegistration(
+        registration.id, userId, eventId,
+        studentProfile.fullName,
+        studentProfile.group ?? '',
+        studentProfile.institute?.name ?? '',
+      );
+    }
 
     return { message: 'Successfully registered', registration };
   }

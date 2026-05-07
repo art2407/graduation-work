@@ -3,7 +3,7 @@ import {
   AppBar, Toolbar, Typography, Button, Box, Container, IconButton,
   Menu, MenuItem, Avatar, Chip,
 } from '@mui/material';
-import { EventNote, Person, AdminPanelSettings } from '@mui/icons-material';
+import { EventNote, Person, AdminPanelSettings, QrCodeScanner, School } from '@mui/icons-material';
 import { useState } from 'react';
 import { useAuthStore } from '../../shared/store/auth.store';
 import { authApi } from '../../shared/api/client';
@@ -24,6 +24,7 @@ export default function Layout() {
     STUDENT: 'Студент',
     ORGANIZER: 'Организатор',
     ADMIN: 'Администратор',
+    DEAN: 'Администрация вуза',
   };
 
   return (
@@ -49,6 +50,11 @@ export default function Layout() {
               {user.role === 'ADMIN' && (
                 <IconButton color="inherit" component={RouterLink} to="/admin" title="Админ панель">
                   <AdminPanelSettings />
+                </IconButton>
+              )}
+              {(user.role === 'DEAN' || user.role === 'ADMIN') && (
+                <IconButton color="inherit" component={RouterLink} to="/university" title="Кабинет администрации">
+                  <School />
                 </IconButton>
               )}
               <IconButton color="inherit" onClick={(e) => setAnchorEl(e.currentTarget)}>
@@ -78,6 +84,16 @@ export default function Layout() {
                 {user.role === 'ORGANIZER' && (
                   <MenuItem onClick={() => { navigate('/events/new'); setAnchorEl(null); }}>
                     Создать мероприятие
+                  </MenuItem>
+                )}
+                {user.role === 'ORGANIZER' && (
+                  <MenuItem onClick={() => { navigate('/scan'); setAnchorEl(null); }}>
+                    <QrCodeScanner sx={{ mr: 1 }} fontSize="small" /> Сканер QR
+                  </MenuItem>
+                )}
+                {(user.role === 'DEAN' || user.role === 'ADMIN') && (
+                  <MenuItem onClick={() => { navigate('/university'); setAnchorEl(null); }}>
+                    <School sx={{ mr: 1 }} fontSize="small" /> Кабинет администрации
                   </MenuItem>
                 )}
                 <MenuItem onClick={handleLogout} sx={{ color: 'error.main' }}>

@@ -2,141 +2,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Chip, Button, Stack, Divider, Alert, CircularProgress,
-  Paper, Grid, Link, Skeleton, TextField, Dialog, DialogTitle,
+  Paper, Grid, Link, Skeleton, Dialog, DialogTitle,
   DialogContent, List, ListItem, ListItemText,
 } from '@mui/material';
 import {
   CalendarToday, LocationOn, People, Email, Phone, Chat, ArrowBack,
-  CheckCircle, QrCode2, Refresh,
+  CheckCircle, QrCodeScanner,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { useEffect, useRef, useState } from 'react';
-import { eventsApi, registrationApi, attendanceApi } from '../../shared/api/client';
+import { useState } from 'react';
+import { eventsApi, registrationApi } from '../../shared/api/client';
 import { useAuthStore } from '../../shared/store/auth.store';
-
-// ── Organizer QR panel ────────────────────────────────────────────────────────
-function OrganizerQrPanel({ eventId }: { eventId: string }) {
-  const [qrToken, setQrToken] = useState<string | null>(null);
-  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
-  const [secondsLeft, setSecondsLeft] = useState(0);
-  const [error, setError] = useState('');
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const isExpired = !expiresAt || new Date() >= expiresAt;
-
-  const generate = async () => {
-    setError('');
-    try {
-      const { data } = await attendanceApi.generateQr(eventId);
-      setQrToken(data.qrToken);
-      const exp = new Date(data.expiresAt);
-      setExpiresAt(exp);
-      setSecondsLeft(Math.round((exp.getTime() - Date.now()) / 1000));
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Ошибка генерации QR');
-    }
-  };
-
-  useEffect(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (!expiresAt) return;
-    timerRef.current = setInterval(() => {
-      const left = Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000));
-      setSecondsLeft(left);
-      if (left === 0) clearInterval(timerRef.current!);
-    }, 500);
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [expiresAt]);
-
-  return (
-    <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
-      <Stack direction="row" alignItems="center" spacing={1} mb={1}>
-        <QrCode2 color="primary" />
-        <Typography fontWeight={600}>QR-чек-ин (для участников)</Typography>
-      </Stack>
-
-      {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
-
-      {qrToken && !isExpired ? (
-        <Box>
-          <Alert severity="success" sx={{ mb: 1 }}>
-            Покажите токен участникам — осталось {secondsLeft} сек.
-          </Alert>
-          <Box
-            sx={{
-              fontFamily: 'monospace', fontSize: 13, wordBreak: 'break-all',
-              bgcolor: 'grey.100', p: 1.5, borderRadius: 1, mb: 1,
-            }}
-          >
-            {qrToken}
-          </Box>
-        </Box>
-      ) : (
-        qrToken && isExpired && (
-          <Alert severity="warning" sx={{ mb: 1 }}>Токен истёк. Сгенерируйте новый.</Alert>
-        )
-      )}
-
-      <Button
-        variant="contained"
-        size="small"
-        startIcon={isExpired ? <QrCode2 /> : <Refresh />}
-        onClick={generate}
-      >
-        {qrToken && !isExpired ? 'Обновить QR' : 'Сгенерировать QR'}
-      </Button>
-    </Paper>
-  );
-}
-
-// ── Student check-in panel ────────────────────────────────────────────────────
-function StudentCheckInPanel({ eventId, onSuccess }: { eventId: string; onSuccess: () => void }) {
-  const [token, setToken] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
-
-  const handleCheckIn = async () => {
-    if (!token.trim()) return;
-    setLoading(true);
-    setError('');
-    try {
-      await attendanceApi.checkIn(eventId, token.trim());
-      setSuccess(true);
-      onSuccess();
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Ошибка чек-ина');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (success) return null;
-
-  return (
-    <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
-      <Typography fontWeight={600} mb={1}>Отметиться на мероприятии</Typography>
-      <Stack spacing={1}>
-        <TextField
-          size="small"
-          placeholder="Введите QR-токен от организатора"
-          value={token}
-          onChange={(e) => setToken(e.target.value)}
-          fullWidth
-        />
-        {error && <Alert severity="error">{error}</Alert>}
-        <Button
-          variant="contained"
-          onClick={handleCheckIn}
-          disabled={loading || !token.trim()}
-        >
-          {loading ? <CircularProgress size={20} /> : 'Отметиться'}
-        </Button>
-      </Stack>
-    </Paper>
-  );
-}
 
 // ── Attendees dialog ──────────────────────────────────────────────────────────
 function AttendeesDialog({ eventId, open, onClose }: { eventId: string; open: boolean; onClose: () => void }) {
@@ -395,12 +272,12 @@ export default function EventDetailPage() {
                 </Alert>
               )}
 
-              {/* Student QR check-in */}
+              {/* Student: подсказка про QR в профиле */}
               {event.isRegistered && !event.isCheckedIn && event.status === 'PUBLISHED' && (
-                <StudentCheckInPanel
-                  eventId={id!}
-                  onSuccess={() => queryClient.invalidateQueries({ queryKey: ['event', id] })}
-                />
+                <Alert severity="info" sx={{ mt: 2 }} icon={<CheckCircle />}>
+                  Ваш QR-код для входа доступен в разделе{' '}
+                  <strong>Профиль → История мероприятий</strong>
+                </Alert>
               )}
 
               {/* Organizer controls */}
@@ -416,7 +293,15 @@ export default function EventDetailPage() {
                     Список участников ({event.registeredCount ?? 0})
                   </Button>
                   {event.status === 'PUBLISHED' && (
-                    <OrganizerQrPanel eventId={id!} />
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      startIcon={<QrCodeScanner />}
+                      onClick={() => navigate('/scan')}
+                      sx={{ mt: 1 }}
+                    >
+                      Сканировать QR участников
+                    </Button>
                   )}
                 </Box>
               )}

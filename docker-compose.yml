@@ -49,6 +49,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       JWT_SECRET: ${JWT_SECRET:-super-secret-key-change-in-production}
+      QR_SECRET: ${QR_SECRET:-qr-secret-key-change-in-production}
       JWT_EXPIRES_IN: 15m
       REFRESH_TOKEN_EXPIRES_IN: 7d
       PORT: 4000
