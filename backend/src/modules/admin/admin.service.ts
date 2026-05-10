@@ -37,7 +37,7 @@ export class AdminService {
     rejectionReason?: string,
   ) {
     const event = await this.prisma.event.findUnique({ where: { id } });
-    if (!event) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Мероприятие не найдено');
 
     const status = action === 'approve' ? EventStatus.PUBLISHED : EventStatus.REJECTED;
 
@@ -111,7 +111,7 @@ export class AdminService {
 
   async updateUser(id: string, dto: { status?: UserStatus; role?: UserRole }) {
     const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('Пользователь не найден');
 
     await this.prisma.user.update({
       where: { id },
@@ -121,7 +121,7 @@ export class AdminService {
       },
     });
 
-    return { message: 'User updated successfully' };
+    return { message: 'Пользователь обновлён' };
   }
 
   async getAnalytics(period: 'day' | 'week' | 'month' | 'year' = 'month') {

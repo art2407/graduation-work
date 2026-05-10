@@ -15,20 +15,20 @@ export class RegistrationService {
   async register(eventId: string, userId: string) {
     const event = await this.prisma.event.findUnique({ where: { id: eventId, deletedAt: null } });
 
-    if (!event) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Мероприятие не найдено');
     if (event.status !== EventStatus.PUBLISHED) {
-      throw new BadRequestException('Event is not available for registration');
+      throw new BadRequestException('Запись на мероприятие недоступна');
     }
 
     if (event.registrationDeadline && new Date() > event.registrationDeadline) {
-      throw new BadRequestException('Registration deadline has passed');
+      throw new BadRequestException('Срок регистрации истёк');
     }
 
     if (event.capacity) {
       const count = await this.prisma.registration.count({
         where: { eventId, status: RegistrationStatus.CONFIRMED },
       });
-      if (count >= event.capacity) throw new BadRequestException('Event is full');
+      if (count >= event.capacity) throw new BadRequestException('Все места заняты');
     }
 
     const existing = await this.prisma.registration.findUnique({
@@ -37,13 +37,13 @@ export class RegistrationService {
 
     if (existing) {
       if (existing.status === RegistrationStatus.CONFIRMED) {
-        throw new ConflictException('Already registered');
+        throw new ConflictException('Вы уже зарегистрированы на это мероприятие');
       }
       const updated = await this.prisma.registration.update({
         where: { id: existing.id },
         data: { status: RegistrationStatus.CONFIRMED, cancelledAt: null, registeredAt: new Date() },
       });
-      return { message: 'Successfully registered', registration: updated };
+      return { message: 'Вы успешно зарегистрированы', registration: updated };
     }
 
     const registration = await this.prisma.registration.create({
@@ -64,7 +64,7 @@ export class RegistrationService {
       );
     }
 
-    return { message: 'Successfully registered', registration };
+    return { message: 'Вы успешно зарегистрированы', registration };
   }
 
   async cancel(eventId: string, userId: string) {
@@ -74,14 +74,14 @@ export class RegistrationService {
     });
 
     if (!registration || registration.status !== RegistrationStatus.CONFIRMED) {
-      throw new NotFoundException('Active registration not found');
+      throw new NotFoundException('Активная регистрация не найдена');
     }
 
     const twoHoursBefore = new Date(registration.event.startAt);
     twoHoursBefore.setHours(twoHoursBefore.getHours() - 2);
 
     if (new Date() > twoHoursBefore) {
-      throw new BadRequestException('Cannot cancel registration less than 2 hours before event');
+      throw new BadRequestException('Отмена регистрации невозможна менее чем за 2 часа до начала');
     }
 
     await this.prisma.registration.update({
@@ -89,20 +89,20 @@ export class RegistrationService {
       data: { status: RegistrationStatus.CANCELLED, cancelledAt: new Date() },
     });
 
-    return { message: 'Registration cancelled successfully' };
+    return { message: 'Регистрация отменена' };
   }
 
   async getAttendees(eventId: string, callerUserId: string, callerRole: string, status?: string, page: any = 1, limit: any = 50) {
     const p = Math.max(1, parseInt(page) || 1);
     const l = Math.max(1, parseInt(limit) || 50);
     const event = await this.prisma.event.findUnique({ where: { id: eventId } });
-    if (!event) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Мероприятие не найдено');
 
     if (callerRole !== 'ADMIN') {
       const profile = await this.prisma.organizerProfile.findUnique({
         where: { userId: callerUserId },
       });
-      if (!profile || event.organizerId !== profile.id) throw new ForbiddenException('Access denied');
+      if (!profile || event.organizerId !== profile.id) throw new ForbiddenException('Нет доступа');
     }
 
     const skip = (p - 1) * l;
@@ -138,11 +138,11 @@ export class RegistrationService {
       where: { id: eventId },
       select: { title: true, startAt: true, organizerId: true },
     });
-    if (!event) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Мероприятие не найдено');
 
     if (callerRole !== 'ADMIN') {
       const profile = await this.prisma.organizerProfile.findUnique({ where: { userId: callerUserId } });
-      if (!profile || event.organizerId !== profile.id) throw new ForbiddenException('Access denied');
+      if (!profile || event.organizerId !== profile.id) throw new ForbiddenException('Нет доступа');
     }
 
     const registrations = await this.prisma.registration.findMany({

@@ -27,7 +27,7 @@ export class UsersService {
       },
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('Пользователь не найден');
     return user;
   }
 
@@ -64,7 +64,7 @@ export class UsersService {
 
   async changePassword(userId: string, dto: ChangePasswordDto) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('Пользователь не найден');
 
     const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
     if (!valid) throw new BadRequestException('Неверный текущий пароль');
@@ -90,7 +90,7 @@ export class UsersService {
       },
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('Пользователь не найден');
     return user;
   }
 

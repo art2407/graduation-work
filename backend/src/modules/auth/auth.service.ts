@@ -33,10 +33,10 @@ export class AuthService {
     }
 
     if (dto.role === UserRole.STUDENT && !dto.studentProfile) {
-      throw new BadRequestException('Student profile required');
+      throw new BadRequestException('Необходимо заполнить профиль студента');
     }
     if (dto.role === UserRole.ORGANIZER && !dto.organizerProfile) {
-      throw new BadRequestException('Organizer profile required');
+      throw new BadRequestException('Необходимо заполнить профиль организатора');
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
@@ -79,7 +79,7 @@ export class AuthService {
       },
     });
 
-    return { userId: user.id, message: 'Registration successful' };
+    return { userId: user.id, message: 'Регистрация прошла успешно' };
   }
 
   async login(dto: LoginDto) {
@@ -90,10 +90,10 @@ export class AuthService {
       },
     });
 
-    if (!user) throw new UnauthorizedException('Invalid credentials');
+    if (!user) throw new UnauthorizedException('Неверный логин или пароль');
 
     const isValid = await bcrypt.compare(dto.password, user.passwordHash);
-    if (!isValid) throw new UnauthorizedException('Invalid credentials');
+    if (!isValid) throw new UnauthorizedException('Неверный логин или пароль');
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -115,7 +115,7 @@ export class AuthService {
     });
 
     if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException('Сессия истекла, войдите снова');
     }
 
     await this.prisma.refreshToken.update({
@@ -142,7 +142,7 @@ export class AuthService {
         data: { revokedAt: new Date() },
       });
     }
-    return { message: 'Logged out successfully' };
+    return { message: 'Выход выполнен' };
   }
 
   private async generateTokens(user: { id: string; login: string; role: string }) {
