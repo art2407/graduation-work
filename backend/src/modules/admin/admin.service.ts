@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventStatus, UserStatus, UserRole } from '@prisma/client';
 
@@ -87,6 +88,25 @@ export class AdminService {
       data,
       pagination: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
     };
+  }
+
+  async createDeanUser(dto: { login: string; email: string; password: string; fullName?: string }) {
+    const existing = await this.prisma.user.findFirst({
+      where: { OR: [{ login: dto.login }, { email: dto.email }] },
+    });
+    if (existing) throw new ConflictException('Пользователь с таким логином или email уже существует');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        login: dto.login,
+        email: dto.email,
+        passwordHash,
+        role: UserRole.DEAN,
+      },
+      select: { id: true, login: true, email: true, role: true, createdAt: true },
+    });
+    return user;
   }
 
   async updateUser(id: string, dto: { status?: UserStatus; role?: UserRole }) {

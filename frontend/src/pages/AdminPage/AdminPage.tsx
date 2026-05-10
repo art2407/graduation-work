@@ -4,9 +4,13 @@ import {
   Box, Typography, Tabs, Tab, Paper, List, ListItem, ListItemText,
   Button, Chip, Stack, Alert, CircularProgress, TextField, Select,
   MenuItem, FormControl, InputLabel, Grid, Card, CardContent,
-  Dialog, DialogTitle, DialogContent, DialogActions,
+  Dialog, DialogTitle, DialogContent, DialogActions, Divider,
+  Tooltip,
 } from '@mui/material';
-import { CheckCircle, Cancel, People, EventNote, Analytics } from '@mui/icons-material';
+import {
+  CheckCircle, Cancel, People, EventNote, Analytics,
+  PersonAdd, School,
+} from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { adminApi } from '../../shared/api/client';
@@ -18,9 +22,9 @@ export default function AdminPage() {
     <Box>
       <Typography variant="h4" fontWeight={700} mb={3}>Панель администратора</Typography>
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={{ mb: 3 }}>
-        <Tab icon={<EventNote />} label="Модерация" />
-        <Tab icon={<People />} label="Пользователи" />
-        <Tab icon={<Analytics />} label="Аналитика" />
+        <Tab icon={<EventNote />} iconPosition="start" label="Модерация" />
+        <Tab icon={<People />} iconPosition="start" label="Пользователи" />
+        <Tab icon={<Analytics />} iconPosition="start" label="Аналитика" />
       </Tabs>
       {tab === 0 && <ModerationTab />}
       {tab === 1 && <UsersTab />}
@@ -135,10 +139,72 @@ function ModerationTab() {
   );
 }
 
+const ROLE_LABELS: Record<string, { label: string; color: any }> = {
+  STUDENT:   { label: 'Студент',             color: 'primary' },
+  ORGANIZER: { label: 'Организатор',         color: 'secondary' },
+  ADMIN:     { label: 'Администратор',       color: 'error' },
+  DEAN:      { label: 'Администрация вуза',  color: 'warning' },
+};
+
+function CreateDeanDialog({ onClose }: { onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState({ login: '', email: '', password: '', fullName: '' });
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => adminApi.createDean(form),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+      onClose();
+    },
+    onError: (err: any) => setError(err.response?.data?.message || 'Ошибка создания'),
+  });
+
+  const set = (k: string) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <School color="warning" />
+          <span>Новый сотрудник вуза</span>
+        </Stack>
+      </DialogTitle>
+      <DialogContent>
+        <Stack spacing={2} mt={1}>
+          {error && <Alert severity="error">{error}</Alert>}
+          <Alert severity="info" sx={{ fontSize: 12 }}>
+            Сотрудник сможет войти через обычную форму входа (/login) и получит доступ к
+            кабинету администрации вуза.
+          </Alert>
+          <TextField label="Логин" size="small" fullWidth value={form.login} onChange={set('login')} />
+          <TextField label="Email" type="email" size="small" fullWidth value={form.email} onChange={set('email')} />
+          <TextField label="Пароль" type="password" size="small" fullWidth value={form.password} onChange={set('password')}
+            helperText="Минимум 8 символов" />
+          <TextField label="ФИО (необязательно)" size="small" fullWidth value={form.fullName} onChange={set('fullName')} />
+        </Stack>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Отмена</Button>
+        <Button
+          variant="contained"
+          color="warning"
+          onClick={() => mutation.mutate()}
+          disabled={mutation.isPending || !form.login || !form.email || form.password.length < 8}
+        >
+          {mutation.isPending ? <CircularProgress size={20} /> : 'Создать'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 function UsersTab() {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [createDeanOpen, setCreateDeanOpen] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', search, roleFilter],
@@ -152,58 +218,111 @@ function UsersTab() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
   });
 
+  const roleMutation = useMutation({
+    mutationFn: ({ id, role }: { id: string; role: string }) =>
+      adminApi.updateUser(id, { role }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-users'] }),
+  });
+
   return (
     <Box>
-      <Stack direction="row" spacing={2} mb={3}>
+      <Stack direction="row" spacing={2} mb={3} alignItems="center">
         <TextField
-          placeholder="Поиск..."
+          placeholder="Поиск по логину или email..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           size="small"
           sx={{ flexGrow: 1 }}
         />
-        <FormControl size="small" sx={{ minWidth: 150 }}>
+        <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel>Роль</InputLabel>
           <Select value={roleFilter} label="Роль" onChange={(e) => setRoleFilter(e.target.value)}>
-            <MenuItem value="">Все</MenuItem>
+            <MenuItem value="">Все роли</MenuItem>
             <MenuItem value="STUDENT">Студент</MenuItem>
             <MenuItem value="ORGANIZER">Организатор</MenuItem>
+            <MenuItem value="DEAN">Администрация вуза</MenuItem>
             <MenuItem value="ADMIN">Администратор</MenuItem>
           </Select>
         </FormControl>
+        <Tooltip title="Создать сотрудника вуза">
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={<PersonAdd />}
+            onClick={() => setCreateDeanOpen(true)}
+            sx={{ whiteSpace: 'nowrap' }}
+          >
+            Сотрудник вуза
+          </Button>
+        </Tooltip>
       </Stack>
 
       {isLoading ? <CircularProgress /> : (
         <Paper>
-          <List>
-            {data?.data?.map((user: any) => (
-              <ListItem key={user.id} divider>
-                <ListItemText
-                  primary={
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <span>{user.studentProfile?.fullName ?? user.organizerProfile?.fullName ?? user.login}</span>
-                      <Chip label={user.role} size="small" />
-                      {user.status === 'BLOCKED' && <Chip label="Заблокирован" color="error" size="small" />}
-                    </Stack>
-                  }
-                  secondary={`@${user.login} • ${user.email}`}
-                />
-                <Button
-                  size="small"
-                  variant="outlined"
-                  color={user.status === 'BLOCKED' ? 'success' : 'error'}
-                  onClick={() => blockMutation.mutate({
-                    id: user.id,
-                    status: user.status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED',
-                  })}
-                >
-                  {user.status === 'BLOCKED' ? 'Разблокировать' : 'Заблокировать'}
-                </Button>
-              </ListItem>
-            ))}
+          <List disablePadding>
+            {data?.data?.map((user: any) => {
+              const name = user.studentProfile?.fullName
+                ?? user.organizerProfile?.fullName
+                ?? user.login;
+              const roleInfo = ROLE_LABELS[user.role] ?? { label: user.role, color: 'default' };
+              return (
+                <ListItem key={user.id} divider alignItems="flex-start">
+                  <ListItemText
+                    primary={
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Typography fontWeight={600}>{name}</Typography>
+                        <Chip label={roleInfo.label} color={roleInfo.color} size="small" />
+                        {user.status === 'BLOCKED' && (
+                          <Chip label="Заблокирован" color="error" size="small" />
+                        )}
+                      </Stack>
+                    }
+                    secondary={
+                      <Typography variant="caption" color="text.secondary">
+                        @{user.login} · {user.email}
+                        {user.lastLoginAt && ` · Вход: ${format(new Date(user.lastLoginAt), 'd MMM yyyy', { locale: ru })}`}
+                      </Typography>
+                    }
+                  />
+                  <Stack direction="row" spacing={1} alignItems="center" ml={1}>
+                    {/* Смена роли */}
+                    {user.role !== 'ADMIN' && (
+                      <FormControl size="small" sx={{ minWidth: 165 }}>
+                        <Select
+                          value={user.role}
+                          onChange={(e) => roleMutation.mutate({ id: user.id, role: e.target.value })}
+                          disabled={roleMutation.isPending}
+                        >
+                          <MenuItem value="STUDENT">Студент</MenuItem>
+                          <MenuItem value="ORGANIZER">Организатор</MenuItem>
+                          <MenuItem value="DEAN">Администрация вуза</MenuItem>
+                          <MenuItem value="ADMIN">Администратор</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                    <Divider orientation="vertical" flexItem />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      color={user.status === 'BLOCKED' ? 'success' : 'error'}
+                      onClick={() => blockMutation.mutate({
+                        id: user.id,
+                        status: user.status === 'BLOCKED' ? 'ACTIVE' : 'BLOCKED',
+                      })}
+                      disabled={blockMutation.isPending}
+                      sx={{ whiteSpace: 'nowrap' }}
+                    >
+                      {user.status === 'BLOCKED' ? 'Разблокировать' : 'Заблокировать'}
+                    </Button>
+                  </Stack>
+                </ListItem>
+              );
+            })}
           </List>
         </Paper>
       )}
+
+      {createDeanOpen && <CreateDeanDialog onClose={() => setCreateDeanOpen(false)} />}
     </Box>
   );
 }

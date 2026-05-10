@@ -88,6 +88,8 @@ export const adminApi = {
     apiClient.put(`/admin/events/${id}/moderate`, { action, rejectionReason }),
   getUsers: (params?: any) => apiClient.get('/admin/users', { params }),
   updateUser: (id: string, data: any) => apiClient.put(`/admin/users/${id}`, data),
+  createDean: (data: { login: string; email: string; password: string; fullName?: string }) =>
+    apiClient.post('/admin/users/dean', data),
   getAnalytics: (params?: any) => apiClient.get('/admin/analytics', { params }),
 };
 
