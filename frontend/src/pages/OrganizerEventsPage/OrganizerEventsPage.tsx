@@ -1,26 +1,38 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Paper, List, ListItem, ListItemText, Chip, Stack,
-  Button, Alert, Skeleton, Divider,
+  Button, Alert, Skeleton, Divider, Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions,
 } from '@mui/material';
-import { Add, Edit, Delete } from '@mui/icons-material';
+import {
+  Add, Edit, Delete, Cancel, Download, Visibility,
+} from '@mui/icons-material';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { eventsApi } from '../../shared/api/client';
+import { eventsApi, registrationApi } from '../../shared/api/client';
 
 const STATUS_LABELS: Record<string, { label: string; color: any }> = {
-  DRAFT:      { label: 'Черновик',    color: 'default' },
-  MODERATION: { label: 'На модерации', color: 'warning' },
-  PUBLISHED:  { label: 'Опубликовано', color: 'success' },
-  REJECTED:   { label: 'Отклонено',   color: 'error' },
-  CANCELLED:  { label: 'Отменено',    color: 'default' },
-  COMPLETED:  { label: 'Завершено',   color: 'info' },
+  DRAFT:      { label: 'Черновик',       color: 'default' },
+  MODERATION: { label: 'На модерации',   color: 'warning' },
+  PUBLISHED:  { label: 'Опубликовано',   color: 'success' },
+  REJECTED:   { label: 'Отклонено',      color: 'error' },
+  CANCELLED:  { label: 'Отменено',       color: 'default' },
+  COMPLETED:  { label: 'Завершено',      color: 'info' },
 };
+
+const canEdit = (status: string) =>
+  ['DRAFT', 'MODERATION', 'REJECTED', 'PUBLISHED'].includes(status);
+
+const canCancel = (status: string) =>
+  ['MODERATION', 'PUBLISHED'].includes(status);
 
 export default function OrganizerEventsPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null);
+  const [confirmCancel, setConfirmCancel] = useState<{ id: string; title: string } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-events'],
@@ -29,11 +41,22 @@ export default function OrganizerEventsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => eventsApi.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['my-events'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-events'] });
+      setConfirmDelete(null);
+    },
+  });
+
+  const cancelMutation = useMutation({
+    mutationFn: (id: string) => eventsApi.cancel(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-events'] });
+      setConfirmCancel(null);
+    },
   });
 
   return (
-    <Box maxWidth={900} mx="auto">
+    <Box maxWidth={960} mx="auto">
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4" fontWeight={700}>Мои мероприятия</Typography>
         <Button variant="contained" startIcon={<Add />} onClick={() => navigate('/events/new')}>
@@ -47,8 +70,7 @@ export default function OrganizerEventsPage() {
         </Stack>
       ) : !data?.data?.length ? (
         <Alert severity="info">
-          У вас пока нет мероприятий.{' '}
-          <strong>Создайте первое!</strong>
+          У вас пока нет мероприятий. <strong>Создайте первое!</strong>
         </Alert>
       ) : (
         <Paper elevation={2}>
@@ -58,56 +80,76 @@ export default function OrganizerEventsPage() {
               return (
                 <Box key={event.id}>
                   {idx > 0 && <Divider />}
-                  <ListItem
-                    sx={{ py: 2 }}
-                    secondaryAction={
-                      <Stack direction="row" spacing={1}>
-                        <Button
-                          size="small"
-                          startIcon={<Edit />}
-                          onClick={() => navigate(`/events/${event.id}`)}
-                        >
-                          Открыть
-                        </Button>
-                        <Button
-                          size="small"
-                          color="error"
-                          startIcon={<Delete />}
-                          onClick={() => {
-                            if (confirm('Удалить мероприятие?')) deleteMutation.mutate(event.id);
-                          }}
-                          disabled={deleteMutation.isPending}
-                        >
-                          Удалить
-                        </Button>
-                      </Stack>
-                    }
-                  >
+                  <ListItem sx={{ py: 2, pr: 1 }}>
                     <ListItemText
                       primary={
-                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" mb={0.5}>
                           <Typography fontWeight={600}>{event.title}</Typography>
                           <Chip label={st.label} color={st.color} size="small" />
                           {event.registeredCount > 0 && (
-                            <Chip
-                              label={`${event.registeredCount} участников`}
-                              size="small"
-                              variant="outlined"
-                            />
+                            <Chip label={`${event.registeredCount} участников`} size="small" variant="outlined" />
                           )}
                         </Stack>
                       }
                       secondary={
-                        <Typography variant="body2" color="text.secondary">
-                          {format(new Date(event.startAt), 'd MMMM yyyy, HH:mm', { locale: ru })}
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Typography variant="body2" color="text.secondary">
+                            {format(new Date(event.startAt), 'd MMMM yyyy, HH:mm', { locale: ru })}
+                          </Typography>
                           {event.rejectionReason && (
-                            <Box component="span" color="error.main" ml={1}>
-                              • Причина отклонения: {event.rejectionReason}
-                            </Box>
+                            <Typography variant="body2" color="error.main">
+                              · {event.rejectionReason}
+                            </Typography>
                           )}
-                        </Typography>
+                        </Stack>
                       }
                     />
+
+                    {/* Кнопки действий */}
+                    <Stack direction="row" spacing={0.5} ml={1} flexShrink={0}>
+                      <Tooltip title="Просмотр">
+                        <Button size="small" startIcon={<Visibility />}
+                          onClick={() => navigate(`/events/${event.id}`)}>
+                          Открыть
+                        </Button>
+                      </Tooltip>
+
+                      {canEdit(event.status) && (
+                        <Tooltip title="Редактировать">
+                          <Button size="small" startIcon={<Edit />} color="primary"
+                            onClick={() => navigate(`/events/${event.id}/edit`)}>
+                            Изменить
+                          </Button>
+                        </Tooltip>
+                      )}
+
+                      {event.registeredCount > 0 && (
+                        <Tooltip title="Скачать список участников (CSV)">
+                          <Button size="small" startIcon={<Download />} color="success"
+                            component="a"
+                            href={registrationApi.getExportUrl(event.id)}
+                            download>
+                            CSV
+                          </Button>
+                        </Tooltip>
+                      )}
+
+                      {canCancel(event.status) && (
+                        <Tooltip title="Отменить мероприятие">
+                          <Button size="small" color="warning" startIcon={<Cancel />}
+                            onClick={() => setConfirmCancel({ id: event.id, title: event.title })}>
+                            Отменить
+                          </Button>
+                        </Tooltip>
+                      )}
+
+                      <Tooltip title="Удалить навсегда">
+                        <Button size="small" color="error" startIcon={<Delete />}
+                          onClick={() => setConfirmDelete({ id: event.id, title: event.title })}>
+                          Удалить
+                        </Button>
+                      </Tooltip>
+                    </Stack>
                   </ListItem>
                 </Box>
               );
@@ -119,6 +161,45 @@ export default function OrganizerEventsPage() {
       <Typography variant="body2" color="text.secondary" mt={2}>
         Всего: {data?.pagination?.total ?? 0} мероприятий
       </Typography>
+
+      {/* Диалог подтверждения отмены */}
+      <Dialog open={!!confirmCancel} onClose={() => setConfirmCancel(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Отменить мероприятие?</DialogTitle>
+        <DialogContent>
+          <Typography>«{confirmCancel?.title}»</Typography>
+          <Alert severity="warning" sx={{ mt: 2 }}>
+            Мероприятие получит статус «Отменено». Все зарегистрированные участники будут уведомлены.
+            Действие необратимо.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmCancel(null)}>Назад</Button>
+          <Button color="warning" variant="contained"
+            onClick={() => cancelMutation.mutate(confirmCancel!.id)}
+            disabled={cancelMutation.isPending}>
+            {cancelMutation.isPending ? 'Отмена...' : 'Отменить мероприятие'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог подтверждения удаления */}
+      <Dialog open={!!confirmDelete} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Удалить мероприятие?</DialogTitle>
+        <DialogContent>
+          <Typography>«{confirmDelete?.title}»</Typography>
+          <Alert severity="error" sx={{ mt: 2 }}>
+            Мероприятие будет безвозвратно удалено вместе со всеми регистрациями.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDelete(null)}>Назад</Button>
+          <Button color="error" variant="contained"
+            onClick={() => deleteMutation.mutate(confirmDelete!.id)}
+            disabled={deleteMutation.isPending}>
+            {deleteMutation.isPending ? 'Удаление...' : 'Удалить'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

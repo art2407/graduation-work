@@ -57,6 +57,7 @@ export const eventsApi = {
   getOne: (id: string) => apiClient.get<any>(`/events/${id}`),
   create: (data: any) => apiClient.post('/events', data),
   update: (id: string, data: any) => apiClient.put(`/events/${id}`, data),
+  cancel: (id: string) => apiClient.patch(`/events/${id}/cancel`, {}),
   delete: (id: string) => apiClient.delete(`/events/${id}`),
   getMyEvents: (params?: any) => apiClient.get('/events/my', { params }),
 };
@@ -67,6 +68,7 @@ export const registrationApi = {
   cancel: (eventId: string) => apiClient.delete(`/events/${eventId}/register`),
   getAttendees: (eventId: string, params?: any) =>
     apiClient.get(`/events/${eventId}/attendees`, { params }),
+  getExportUrl: (eventId: string) => `${API_BASE}/events/${eventId}/attendees/export`,
 };
 
 // Attendance / QR

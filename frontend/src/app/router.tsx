@@ -14,6 +14,7 @@ const CreateEventPage = lazy(() => import('../pages/CreateEventPage/CreateEventP
 const OrganizerEventsPage = lazy(() => import('../pages/OrganizerEventsPage/OrganizerEventsPage'));
 const QrScannerPage = lazy(() => import('../pages/QrScannerPage/QrScannerPage'));
 const UniversityPage = lazy(() => import('../pages/UniversityPage/UniversityPage'));
+const EditEventPage = lazy(() => import('../pages/EditEventPage/EditEventPage'));
 
 const Loader = () => (
   <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -42,6 +43,14 @@ export const router = createBrowserRouter([
       {
         path: 'events/:id',
         element: <Suspense fallback={<Loader />}><EventDetailPage /></Suspense>,
+      },
+      {
+        path: 'events/:id/edit',
+        element: (
+          <ProtectedRoute roles={['ORGANIZER']}>
+            <Suspense fallback={<Loader />}><EditEventPage /></Suspense>
+          </ProtectedRoute>
+        ),
       },
       {
         path: 'profile',

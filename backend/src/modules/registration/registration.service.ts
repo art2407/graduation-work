@@ -132,4 +132,49 @@ export class RegistrationService {
       pagination: { page: p, limit: l, total, totalPages: Math.ceil(total / l) },
     };
   }
+
+  async exportCsv(eventId: string, callerUserId: string, callerRole: string): Promise<string> {
+    const event = await this.prisma.event.findUnique({
+      where: { id: eventId },
+      select: { title: true, startAt: true, organizerId: true },
+    });
+    if (!event) throw new NotFoundException('Event not found');
+
+    if (callerRole !== 'ADMIN') {
+      const profile = await this.prisma.organizerProfile.findUnique({ where: { userId: callerUserId } });
+      if (!profile || event.organizerId !== profile.id) throw new ForbiddenException('Access denied');
+    }
+
+    const registrations = await this.prisma.registration.findMany({
+      where: { eventId },
+      orderBy: { registeredAt: 'asc' },
+      include: {
+        user: {
+          select: {
+            email: true,
+            studentProfile: { include: { institute: { select: { name: true } } } },
+          },
+        },
+      },
+    });
+
+    const esc = (v: string) => `"${(v ?? '').replace(/"/g, '""')}"`;
+    const header = ['№', 'ФИО', 'Группа', 'Курс', 'Институт', 'Email', 'Статус', 'Зарегистрирован', 'Чек-ин'];
+    const rows = registrations.map((reg, idx) => {
+      const sp = reg.user.studentProfile;
+      return [
+        idx + 1,
+        esc(sp?.fullName ?? '—'),
+        esc(sp?.group ?? '—'),
+        sp?.yearOfStudy ?? '—',
+        esc(sp?.institute?.name ?? '—'),
+        esc(reg.user.email),
+        esc(reg.status),
+        esc(reg.registeredAt.toLocaleString('ru-RU')),
+        esc(reg.checkedInAt?.toLocaleString('ru-RU') ?? '—'),
+      ].join(';');
+    });
+
+    return [header.map(esc).join(';'), ...rows].join('\r\n');
+  }
 }

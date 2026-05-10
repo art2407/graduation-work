@@ -150,6 +150,24 @@ export class EventsService {
     return { message: 'Event updated and sent for re-moderation', event: updated };
   }
 
+  async cancel(id: string, organizerUserId: string) {
+    const event = await this.findEventWithOwnerCheck(id, organizerUserId);
+
+    if (event.status === EventStatus.CANCELLED) {
+      throw new BadRequestException('Event is already cancelled');
+    }
+    if (event.status === EventStatus.COMPLETED) {
+      throw new BadRequestException('Cannot cancel a completed event');
+    }
+
+    await this.prisma.event.update({
+      where: { id },
+      data: { status: EventStatus.CANCELLED },
+    });
+
+    return { message: 'Event cancelled successfully' };
+  }
+
   async remove(id: string, organizerUserId: string) {
     await this.findEventWithOwnerCheck(id, organizerUserId);
 
