@@ -100,10 +100,16 @@ export default function EventDetailPage() {
     <Alert severity="error">Мероприятие не найдено</Alert>
   );
 
-  const isPast = new Date(event.startAt) < new Date();
-  const isFull = event.capacity && event.registeredCount >= event.capacity;
+  const now = new Date();
+  const isPast = new Date(event.startAt) < now;
+  const isCompleted = event.status === 'COMPLETED';
+  const isRegistrationClosed =
+    isCompleted ||
+    isPast ||
+    (!!event.registrationDeadline && new Date(event.registrationDeadline) < now);
+  const isFull = !!(event.capacity && event.registeredCount >= event.capacity);
   const canRegister = isAuthenticated && user?.role === 'STUDENT'
-    && event.status === 'PUBLISHED' && !isPast && !isFull;
+    && event.status === 'PUBLISHED' && !isRegistrationClosed && !isFull;
   const isOrganizer = user?.role === 'ORGANIZER' || user?.role === 'ADMIN';
 
   return (
@@ -127,8 +133,18 @@ export default function EventDetailPage() {
             <Chip label={event.type} color="primary" />
             {event.institute && <Chip label={event.institute.name} variant="outlined" />}
             <Chip
-              label={event.status === 'PUBLISHED' ? 'Идёт запись' : event.status}
-              color={event.status === 'PUBLISHED' ? 'success' : 'default'}
+              label={
+                isCompleted ? 'Завершено' :
+                isRegistrationClosed ? 'Регистрация завершена' :
+                event.status === 'PUBLISHED' ? 'Идёт запись' :
+                event.status
+              }
+              color={
+                isCompleted ? 'default' :
+                isRegistrationClosed ? 'warning' :
+                event.status === 'PUBLISHED' ? 'success' :
+                'default'
+              }
             />
           </Stack>
 
@@ -231,7 +247,14 @@ export default function EventDetailPage() {
             </Stack>
 
             <Box mt={3}>
-              {!isAuthenticated && (
+              {/* Регистрация завершена */}
+              {isRegistrationClosed && !event.isRegistered && user?.role === 'STUDENT' && (
+                <Alert severity="warning" sx={{ mb: 1 }}>
+                  {isCompleted ? 'Мероприятие завершено' : 'Регистрация на это мероприятие завершена'}
+                </Alert>
+              )}
+
+              {!isAuthenticated && !isRegistrationClosed && (
                 <Button fullWidth variant="contained" onClick={() => navigate('/login')}>
                   Войдите для записи
                 </Button>
@@ -249,7 +272,7 @@ export default function EventDetailPage() {
                 </Button>
               )}
 
-              {event.isRegistered && !event.isCheckedIn && !isPast && (
+              {event.isRegistered && !event.isCheckedIn && !isRegistrationClosed && (
                 <Button
                   fullWidth
                   variant="outlined"

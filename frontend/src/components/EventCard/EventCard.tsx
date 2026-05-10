@@ -32,6 +32,21 @@ interface Props {
 export default function EventCard({ event }: Props) {
   const navigate = useNavigate();
 
+  const now = new Date();
+  const isCompleted = event.status === 'COMPLETED';
+  const isRegistrationClosed =
+    isCompleted ||
+    new Date(event.startAt) < now ||
+    (!!event.registrationDeadline && new Date(event.registrationDeadline) < now);
+
+  const statusChip = isCompleted
+    ? { label: 'Завершено', color: 'default' as const }
+    : isRegistrationClosed
+    ? { label: 'Регистрация завершена', color: 'warning' as const }
+    : event.status === 'PUBLISHED'
+    ? null // не показываем — карточка и так в каталоге published
+    : { label: event.status, color: STATUS_COLORS[event.status] ?? 'default' as const };
+
   return (
     <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <CardActionArea onClick={() => navigate(`/events/${event.id}`)} sx={{ flexGrow: 1 }}>
@@ -52,11 +67,11 @@ export default function EventCard({ event }: Props) {
               color="primary"
               variant="outlined"
             />
-            {event.status !== 'PUBLISHED' && (
+            {statusChip && (
               <Chip
-                label={event.status}
+                label={statusChip.label}
                 size="small"
-                color={STATUS_COLORS[event.status] ?? 'default'}
+                color={statusChip.color}
               />
             )}
             {event.institute && (
