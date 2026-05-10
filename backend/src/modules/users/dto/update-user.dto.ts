@@ -1,5 +1,5 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsDateString } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, IsInt, Min, Max, IsDateString, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateStudentDto {
   @ApiPropertyOptional() @IsOptional() @IsString() fullName?: string;
@@ -9,6 +9,11 @@ export class UpdateStudentDto {
   @ApiPropertyOptional() @IsOptional() @IsString() instituteId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() group?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(6) yearOfStudy?: number;
+}
+
+export class ChangePasswordDto {
+  @ApiProperty() @IsString() currentPassword: string;
+  @ApiProperty({ minLength: 8 }) @IsString() @MinLength(8) newPassword: string;
 }
 
 export class UpdateOrganizerDto {

@@ -15,6 +15,7 @@ const OrganizerEventsPage = lazy(() => import('../pages/OrganizerEventsPage/Orga
 const QrScannerPage = lazy(() => import('../pages/QrScannerPage/QrScannerPage'));
 const UniversityPage = lazy(() => import('../pages/UniversityPage/UniversityPage'));
 const EditEventPage = lazy(() => import('../pages/EditEventPage/EditEventPage'));
+const NotFoundPage = lazy(() => import('../pages/NotFoundPage/NotFoundPage'));
 
 const Loader = () => (
   <Box display="flex" justifyContent="center" alignItems="center" minHeight="50vh">
@@ -97,6 +98,10 @@ export const router = createBrowserRouter([
   {
     path: '/login',
     element: <Suspense fallback={<Loader />}><LoginPage /></Suspense>,
+  },
+  {
+    path: '*',
+    element: <Suspense fallback={<Loader />}><NotFoundPage /></Suspense>,
   },
   {
     path: '/register',

@@ -48,6 +48,8 @@ export const authApi = {
 export const usersApi = {
   getMe: () => apiClient.get<any>('/users/me'),
   updateMe: (data: any) => apiClient.put('/users/me', data),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    apiClient.patch('/users/me/password', data),
   getEventsHistory: (params?: any) => apiClient.get('/users/me/events-history', { params }),
 };
 

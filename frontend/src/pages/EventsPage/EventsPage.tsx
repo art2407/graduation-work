@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useDebounce } from '../../shared/hooks/useDebounce';
 import {
   Grid, Typography, Box, TextField, Select, MenuItem, FormControl, InputLabel,
   Skeleton, Alert, Button, Stack, InputAdornment, Pagination,
@@ -17,6 +18,7 @@ export default function EventsPage() {
   const [type, setType] = useState('');
   const [instituteId, setInstituteId] = useState('');
   const [page, setPage] = useState(1);
+  const debouncedSearch = useDebounce(search, 400);
 
   const { data: typesData } = useQuery({
     queryKey: ['event-types'],
@@ -29,9 +31,9 @@ export default function EventsPage() {
   });
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['events', { search, type, instituteId, page }],
+    queryKey: ['events', { search: debouncedSearch, type, instituteId, page }],
     queryFn: () =>
-      eventsApi.getAll({ search: search || undefined, type: type || undefined,
+      eventsApi.getAll({ search: debouncedSearch || undefined, type: type || undefined,
         instituteId: instituteId || undefined, page, limit: 12 }).then((r) => r.data),
     staleTime: 5 * 60 * 1000,
   });
