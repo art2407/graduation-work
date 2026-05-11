@@ -11,7 +11,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { eventsApi, registrationApi } from '../../shared/api/client';
+import { eventsApi } from '../../shared/api/client';
+import { useDownloadCsv } from '../../shared/hooks/useDownloadCsv';
 
 const STATUS_LABELS: Record<string, { label: string; color: any }> = {
   DRAFT:      { label: 'Черновик',       color: 'default' },
@@ -33,6 +34,8 @@ export default function OrganizerEventsPage() {
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState<{ id: string; title: string } | null>(null);
   const [confirmCancel, setConfirmCancel] = useState<{ id: string; title: string } | null>(null);
+  const [csvLoading, setCsvLoading] = useState<string | null>(null);
+  const downloadCsv = useDownloadCsv();
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-events'],
@@ -126,10 +129,17 @@ export default function OrganizerEventsPage() {
                       {event.registeredCount > 0 && (
                         <Tooltip title="Скачать список участников (CSV)">
                           <Button size="small" startIcon={<Download />} color="success"
-                            component="a"
-                            href={registrationApi.getExportUrl(event.id)}
-                            download>
-                            CSV
+                            disabled={csvLoading === event.id}
+                            onClick={async () => {
+                              setCsvLoading(event.id);
+                              try {
+                                await downloadCsv(
+                                  `/events/${event.id}/attendees/export`,
+                                  `participants-${event.id}.csv`,
+                                );
+                              } finally { setCsvLoading(null); }
+                            }}>
+                            {csvLoading === event.id ? 'Загрузка...' : 'CSV'}
                           </Button>
                         </Tooltip>
                       )}

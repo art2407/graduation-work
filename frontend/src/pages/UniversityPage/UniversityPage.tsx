@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useDownloadCsv } from '../../shared/hooks/useDownloadCsv';
 import {
   Box, Typography, Tabs, Tab, Paper, Grid, Card, CardContent,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
@@ -161,6 +162,8 @@ function EventsTab() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [attendeesEvent, setAttendeesEvent] = useState<any>(null);
+  const [csvLoading, setCsvLoading] = useState<string | null>(null);
+  const downloadCsv = useDownloadCsv();
 
   const { data: institutes } = useQuery({
     queryKey: ['institutes'],
@@ -320,9 +323,16 @@ function EventsTab() {
                         <IconButton
                           size="small"
                           color="success"
-                          component="a"
-                          href={universityApi.getExportUrl(event.id)}
-                          download
+                          disabled={csvLoading === event.id}
+                          onClick={async () => {
+                            setCsvLoading(event.id);
+                            try {
+                              await downloadCsv(
+                                `/university/events/${event.id}/attendees/export`,
+                                `participants-${event.id}.csv`,
+                              );
+                            } finally { setCsvLoading(null); }
+                          }}
                         >
                           <Download fontSize="small" />
                         </IconButton>
@@ -356,6 +366,7 @@ function EventsTab() {
 // ── Диалог участников ────────────────────────────────────────────────────────
 
 function AttendeesDialog({ event, onClose }: { event: any; onClose: () => void }) {
+  const downloadCsv = useDownloadCsv();
   const { data, isLoading } = useQuery({
     queryKey: ['university-attendees', event.id],
     queryFn: () => universityApi.getAttendees(event.id, { limit: 500 }).then((r) => r.data),
@@ -376,9 +387,10 @@ function AttendeesDialog({ event, onClose }: { event: any; onClose: () => void }
             size="small"
             variant="outlined"
             startIcon={<Download />}
-            component="a"
-            href={universityApi.getExportUrl(event.id)}
-            download
+            onClick={() => downloadCsv(
+              `/university/events/${event.id}/attendees/export`,
+              `participants-${event.id}.csv`,
+            )}
           >
             CSV
           </Button>

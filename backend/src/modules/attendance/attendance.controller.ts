@@ -39,13 +39,14 @@ export class AttendanceController {
 
   @Post('scan')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ORGANIZER)
+  @Roles(UserRole.ORGANIZER, UserRole.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Отметить участника по QR-коду (организатор)' })
+  @ApiOperation({ summary: 'Отметить участника по QR-коду (организатор или администратор)' })
   scanQr(
-    @CurrentUser('id') organizerUserId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
     @Body() dto: ScanQrDto,
   ) {
-    return this.attendanceService.scanQr(dto.token, organizerUserId);
+    return this.attendanceService.scanQr(dto.token, userId, role);
   }
 }

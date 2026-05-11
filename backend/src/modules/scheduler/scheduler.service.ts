@@ -9,6 +9,22 @@ export class SchedulerService {
 
   constructor(private prisma: PrismaService) {}
 
+  // Очистка устаревших refresh-токенов — каждый день в 3:00
+  @Cron('0 3 * * *')
+  async cleanupRefreshTokens() {
+    const deleted = await this.prisma.refreshToken.deleteMany({
+      where: {
+        OR: [
+          { expiresAt: { lt: new Date() } },
+          { revokedAt: { not: null } },
+        ],
+      },
+    });
+    if (deleted.count > 0) {
+      this.logger.log(`Удалено устаревших refresh-токенов: ${deleted.count}`);
+    }
+  }
+
   // Запускается каждую минуту
   @Cron(CronExpression.EVERY_MINUTE)
   async updateEventStatuses() {

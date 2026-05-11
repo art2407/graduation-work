@@ -39,6 +39,10 @@ export class RegistrationService {
       if (existing.status === RegistrationStatus.CONFIRMED) {
         throw new ConflictException('Вы уже зарегистрированы на это мероприятие');
       }
+      if (existing.status === RegistrationStatus.ATTENDED) {
+        throw new ConflictException('Вы уже посетили это мероприятие');
+      }
+      // Повторная запись после отмены
       const updated = await this.prisma.registration.update({
         where: { id: existing.id },
         data: { status: RegistrationStatus.CONFIRMED, cancelledAt: null, registeredAt: new Date() },
@@ -73,8 +77,14 @@ export class RegistrationService {
       include: { event: true },
     });
 
-    if (!registration || registration.status !== RegistrationStatus.CONFIRMED) {
-      throw new NotFoundException('Активная регистрация не найдена');
+    if (!registration) {
+      throw new NotFoundException('Регистрация не найдена');
+    }
+    if (registration.status === RegistrationStatus.ATTENDED) {
+      throw new BadRequestException('Нельзя отменить запись — вы уже посетили мероприятие');
+    }
+    if (registration.status !== RegistrationStatus.CONFIRMED) {
+      throw new BadRequestException('Регистрация уже отменена');
     }
 
     const twoHoursBefore = new Date(registration.event.startAt);

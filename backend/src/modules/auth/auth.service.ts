@@ -27,8 +27,8 @@ export class AuthService {
     if (existing) {
       throw new ConflictException(
         existing.login === dto.login
-          ? 'Login already taken'
-          : 'Email already registered',
+          ? 'Этот логин уже занят'
+          : 'Email уже зарегистрирован',
       );
     }
 
@@ -44,7 +44,7 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: {
         login: dto.login,
-        email: dto.email,
+        email: dto.email.toLowerCase().trim(),
         passwordHash,
         role: dto.role,
         ...(dto.role === UserRole.STUDENT && dto.studentProfile

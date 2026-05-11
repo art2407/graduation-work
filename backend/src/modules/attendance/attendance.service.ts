@@ -102,7 +102,7 @@ export class AttendanceService {
 
   // ── Сканирование организатором ────────────────────────────────────────────
 
-  async scanQr(rawToken: string, organizerUserId: string) {
+  async scanQr(rawToken: string, organizerUserId: string, callerRole = 'ORGANIZER') {
     const payload = AttendanceService.verifyToken(rawToken);
     if (!payload) {
       throw new BadRequestException('Недействительный QR-код');
@@ -120,7 +120,7 @@ export class AttendanceService {
     const organizerProfile = await this.prisma.organizerProfile.findUnique({
       where: { userId: organizerUserId },
     });
-    if (!organizerProfile || event.organizerId !== organizerProfile.id) {
+    if (callerRole !== 'ADMIN' && (!organizerProfile || event.organizerId !== organizerProfile.id)) {
       throw new ForbiddenException('Вы не являетесь организатором этого мероприятия');
     }
 

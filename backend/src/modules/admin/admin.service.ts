@@ -51,7 +51,7 @@ export class AdminService {
       },
     });
 
-    return { message: `Event ${action === 'approve' ? 'approved' : 'rejected'}`, status };
+    return { message: action === 'approve' ? 'Мероприятие опубликовано' : 'Мероприятие отклонено', status };
   }
 
   async getUsers(filters: { role?: UserRole; status?: UserStatus; search?: string }, page: any = 1, limit: any = 20) {
