@@ -44,7 +44,7 @@ export default function RegisterPage() {
 
   const { data: institutesData } = useQuery({
     queryKey: ['institutes'],
-    queryFn: () => referencesApi.getInstitutes().then((r) => r.data.institutes),
+    queryFn: () => referencesApi.getAcademicInstitutes().then((r) => r.data.institutes),
   });
 
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } =

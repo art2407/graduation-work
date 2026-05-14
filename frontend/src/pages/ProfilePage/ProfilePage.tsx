@@ -74,7 +74,7 @@ function EditProfileModal({ profile, role, onClose }: {
 
   const { data: institutes } = useQuery({
     queryKey: ['institutes'],
-    queryFn: () => referencesApi.getInstitutes().then((r) => r.data.institutes),
+    queryFn: () => referencesApi.getAcademicInstitutes().then((r) => r.data.institutes),
     enabled: role === 'STUDENT',
   });
 

@@ -68,13 +68,13 @@ export default function EventsPage() {
           </Select>
         </FormControl>
         <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel>Институт</InputLabel>
+          <InputLabel>Организация</InputLabel>
           <Select
             value={instituteId}
-            label="Институт"
+            label="Организация"
             onChange={(e) => { setInstituteId(e.target.value); setPage(1); }}
           >
-            <MenuItem value="">Все институты</MenuItem>
+            <MenuItem value="">Все организации</MenuItem>
             {institutesData?.map((i: any) => (
               <MenuItem key={i.id} value={i.id}>{i.name}</MenuItem>
             ))}

@@ -225,12 +225,14 @@ model PushSubscription {
 }
 
 model InstituteDict {
-  id             String           @id @default(uuid())
-  name           String           @unique
-  code           String?          @unique
-  isActive       Boolean          @default(true)
+  id              String           @id @default(uuid())
+  name            String           @unique
+  code            String?          @unique
+  isActive        Boolean          @default(true)
+  category        String           @default("INSTITUTE") // INSTITUTE | ORGANIZATION
   studentProfiles StudentProfile[]
   events          Event[]
 
   @@index([isActive])
+  @@index([category])
 }

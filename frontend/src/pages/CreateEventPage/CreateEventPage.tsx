@@ -104,11 +104,11 @@ export default function CreateEventPage() {
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel>Институт (опционально)</InputLabel>
+                <InputLabel>Организация / Институт (опционально)</InputLabel>
                 <Controller name="instituteId" control={control} defaultValue=""
                   render={({ field }) => (
-                    <Select {...field} label="Институт (опционально)">
-                      <MenuItem value="">— Для всех —</MenuItem>
+                    <Select {...field} label="Организация / Институт (опционально)">
+                      <MenuItem value="">— Для всех подразделений —</MenuItem>
                       {institutesData?.map((i: any) => (
                         <MenuItem key={i.id} value={i.id}>{i.name}</MenuItem>
                       ))}

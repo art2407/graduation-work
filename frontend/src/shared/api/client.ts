@@ -111,6 +111,9 @@ export const universityApi = {
 
 // References
 export const referencesApi = {
+  // Все подразделения (для фильтров и формы мероприятия)
   getInstitutes: () => apiClient.get<any>('/references/institutes'),
+  // Только академические институты (для профиля студента)
+  getAcademicInstitutes: () => apiClient.get<any>('/references/institutes?category=INSTITUTE'),
   getEventTypes: () => apiClient.get<any>('/references/event-types'),
 };
