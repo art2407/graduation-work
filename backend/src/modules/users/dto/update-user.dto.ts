@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsDateString, MinLength } from 'class-validator';
+import { IsOptional, IsString, IsInt, Min, Max, IsDateString, MinLength, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateStudentDto {
@@ -13,7 +13,12 @@ export class UpdateStudentDto {
 
 export class ChangePasswordDto {
   @ApiProperty() @IsString() currentPassword: string;
-  @ApiProperty({ minLength: 8 }) @IsString() @MinLength(8) newPassword: string;
+  @ApiProperty({ minLength: 8 })
+  @IsString()
+  @MinLength(8, { message: 'Пароль должен содержать не менее 8 символов' })
+  @Matches(/[a-zA-Zа-яА-Я]/, { message: 'Пароль должен содержать хотя бы одну букву' })
+  @Matches(/[0-9]/, { message: 'Пароль должен содержать хотя бы одну цифру' })
+  newPassword: string;
 }
 
 export class UpdateOrganizerDto {

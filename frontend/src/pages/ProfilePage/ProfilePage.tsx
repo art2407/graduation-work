@@ -4,7 +4,7 @@ import {
   List, ListItemButton, ListItemText, ListItemSecondaryAction, Tab, Tabs,
   Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress,
   IconButton, TextField, Select, MenuItem, FormControl, InputLabel,
-  Grid,
+  Grid, LinearProgress,
 } from '@mui/material';
 import { CalendarToday, QrCode, Close, Edit, Lock } from '@mui/icons-material';
 import { useState } from 'react';
@@ -12,6 +12,9 @@ import { useForm, Controller } from 'react-hook-form';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { usersApi, attendanceApi, referencesApi } from '../../shared/api/client';
+import {
+  passwordSchema, getPasswordStrength, STRENGTH_LABELS, STRENGTH_COLORS,
+} from '../../shared/utils/passwordValidation';
 import { useNavigate } from 'react-router-dom';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -171,6 +174,9 @@ function EditProfileModal({ profile, role, onClose }: {
 function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [newPwd, setNewPwd] = useState('');
+  const pwdStrength = newPwd ? getPasswordStrength(newPwd) : null;
+
   const { register, handleSubmit, formState: { isSubmitting } } = useForm({
     defaultValues: { currentPassword: '', newPassword: '', confirmPassword: '' },
   });
@@ -185,6 +191,11 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
   const onSubmit = (data: any) => {
     if (data.newPassword !== data.confirmPassword) {
       setError('Новые пароли не совпадают');
+      return;
+    }
+    const result = passwordSchema.safeParse(data.newPassword);
+    if (!result.success) {
+      setError(result.error.errors[0].message);
       return;
     }
     setError('');
@@ -202,8 +213,25 @@ function ChangePasswordModal({ onClose }: { onClose: () => void }) {
             {error && <Alert severity="error">{error}</Alert>}
             <TextField {...register('currentPassword')} label="Текущий пароль"
               type="password" fullWidth size="small" />
-            <TextField {...register('newPassword')} label="Новый пароль (мин. 8 символов)"
-              type="password" fullWidth size="small" />
+            <Box>
+              <TextField {...register('newPassword')} label="Новый пароль"
+                type="password" fullWidth size="small"
+                helperText="Мин. 8 символов, буква и цифра"
+                onChange={(e) => setNewPwd(e.target.value)} />
+              {pwdStrength && (
+                <Box mt={0.5}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={pwdStrength === 'weak' ? 33 : pwdStrength === 'medium' ? 66 : 100}
+                    color={STRENGTH_COLORS[pwdStrength]}
+                    sx={{ height: 4, borderRadius: 2 }}
+                  />
+                  <Typography variant="caption" color={`${STRENGTH_COLORS[pwdStrength]}.main`}>
+                    {STRENGTH_LABELS[pwdStrength]}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
             <TextField {...register('confirmPassword')} label="Повторите новый пароль"
               type="password" fullWidth size="small" />
           </Stack>

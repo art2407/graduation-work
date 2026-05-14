@@ -5,16 +5,21 @@ import { useNavigate, Link as RouterLink } from 'react-router-dom';
 import {
   Box, Paper, Typography, TextField, Button, Alert, Link, CircularProgress,
   ToggleButton, ToggleButtonGroup, MenuItem, Select, FormControl, InputLabel,
+  LinearProgress,
 } from '@mui/material';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { authApi, referencesApi } from '../../shared/api/client';
 import { useAuthStore } from '../../shared/store/auth.store';
+import {
+  passwordSchema, getPasswordStrength,
+  STRENGTH_LABELS, STRENGTH_COLORS,
+} from '../../shared/utils/passwordValidation';
 
 const schema = z.object({
   login: z.string().min(3, 'Минимум 3 символа'),
   email: z.string().email('Некорректный email'),
-  password: z.string().min(8, 'Минимум 8 символов'),
+  password: passwordSchema,
   role: z.enum(['STUDENT', 'ORGANIZER']),
   fullName: z.string().min(2, 'Введите ФИО'),
   organizationName: z.string().optional(),
@@ -33,6 +38,9 @@ export default function RegisterPage() {
   const { setTokens, setUser } = useAuthStore();
   const [error, setError] = useState('');
   const [role, setRole] = useState<'STUDENT' | 'ORGANIZER'>('STUDENT');
+  const [pwdValue, setPwdValue] = useState('');
+  const pwdStrength = pwdValue ? getPasswordStrength(pwdValue) : null;
+
 
   const { data: institutesData } = useQuery({
     queryKey: ['institutes'],
@@ -132,8 +140,22 @@ export default function RegisterPage() {
             fullWidth
             margin="dense"
             error={!!errors.password}
-            helperText={errors.password?.message}
+            helperText={errors.password?.message ?? 'Мин. 8 символов, буква и цифра'}
+            onChange={(e) => setPwdValue(e.target.value)}
           />
+          {pwdStrength && (
+            <Box mt={-1} mb={1}>
+              <LinearProgress
+                variant="determinate"
+                value={pwdStrength === 'weak' ? 33 : pwdStrength === 'medium' ? 66 : 100}
+                color={STRENGTH_COLORS[pwdStrength]}
+                sx={{ height: 4, borderRadius: 2 }}
+              />
+              <Typography variant="caption" color={`${STRENGTH_COLORS[pwdStrength]}.main`}>
+                Надёжность: {STRENGTH_LABELS[pwdStrength]}
+              </Typography>
+            </Box>
+          )}
           <TextField
             {...register('fullName')}
             label="ФИО"
