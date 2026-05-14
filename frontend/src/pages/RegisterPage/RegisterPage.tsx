@@ -43,7 +43,7 @@ export default function RegisterPage() {
 
 
   const { data: institutesData } = useQuery({
-    queryKey: ['institutes'],
+    queryKey: ['institutes', 'academic'],
     queryFn: () => referencesApi.getAcademicInstitutes().then((r) => r.data.institutes),
   });
 
