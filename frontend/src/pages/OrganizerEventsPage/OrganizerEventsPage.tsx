@@ -83,7 +83,7 @@ export default function OrganizerEventsPage() {
               return (
                 <Box key={event.id}>
                   {idx > 0 && <Divider />}
-                  <ListItem sx={{ py: 2, pr: 1 }}>
+                  <ListItem sx={{ py: 2, pr: 1, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
                     <ListItemText
                       primary={
                         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" mb={0.5}>
@@ -109,7 +109,8 @@ export default function OrganizerEventsPage() {
                     />
 
                     {/* Кнопки действий */}
-                    <Stack direction="row" spacing={0.5} ml={1} flexShrink={0}>
+                    <Stack direction="row" spacing={0.5} ml={{ xs: 0, sm: 1 }}
+                      flexShrink={0} flexWrap="wrap" sx={{ mt: { xs: 1, sm: 0 }, width: { xs: '100%', sm: 'auto' } }}>
                       <Tooltip title="Просмотр">
                         <Button size="small" startIcon={<Visibility />}
                           onClick={() => navigate(`/events/${event.id}`)}>

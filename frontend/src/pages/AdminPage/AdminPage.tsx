@@ -5,7 +5,7 @@ import {
   Button, Chip, Stack, Alert, CircularProgress, TextField, Select,
   MenuItem, FormControl, InputLabel, Grid, Card, CardContent,
   Dialog, DialogTitle, DialogContent, DialogActions, Divider,
-  Tooltip,
+
 } from '@mui/material';
 import {
   CheckCircle, Cancel, People, EventNote, Analytics,
@@ -226,7 +226,7 @@ function UsersTab() {
 
   return (
     <Box>
-      <Stack direction="row" spacing={2} mb={3} alignItems="center">
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} mb={3} alignItems={{ xs: 'stretch', sm: 'center' }}>
         <TextField
           placeholder="Поиск по логину или email..."
           value={search}
@@ -244,17 +244,15 @@ function UsersTab() {
             <MenuItem value="ADMIN">Администратор</MenuItem>
           </Select>
         </FormControl>
-        <Tooltip title="Создать сотрудника вуза">
-          <Button
-            variant="contained"
-            color="warning"
-            startIcon={<PersonAdd />}
-            onClick={() => setCreateDeanOpen(true)}
-            sx={{ whiteSpace: 'nowrap' }}
-          >
-            Сотрудник вуза
-          </Button>
-        </Tooltip>
+        <Button
+          variant="contained"
+          color="warning"
+          startIcon={<PersonAdd />}
+          onClick={() => setCreateDeanOpen(true)}
+          sx={{ whiteSpace: 'nowrap' }}
+        >
+          Сотрудник вуза
+        </Button>
       </Stack>
 
       {isLoading ? <CircularProgress /> : (
@@ -284,7 +282,8 @@ function UsersTab() {
                       </Typography>
                     }
                   />
-                  <Stack direction="row" spacing={1} alignItems="center" ml={1}>
+                  <Stack direction="row" spacing={1} alignItems="center" ml={{ xs: 0, sm: 1 }}
+                    flexWrap="wrap" sx={{ mt: { xs: 1, sm: 0 } }}>
                     {/* Смена роли */}
                     {user.role !== 'ADMIN' && (
                       <FormControl size="small" sx={{ minWidth: 165 }}>

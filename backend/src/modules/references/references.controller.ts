@@ -70,3 +70,4 @@ export class ReferencesController {
     return { types: EVENT_TYPES };
   }
 }
+

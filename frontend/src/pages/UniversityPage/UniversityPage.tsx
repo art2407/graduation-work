@@ -250,7 +250,7 @@ function EventsTab() {
       ) : !data?.data?.length ? (
         <Alert severity="info">Мероприятия не найдены</Alert>
       ) : (
-        <TableContainer component={Paper} elevation={2}>
+        <TableContainer component={Paper} elevation={2} sx={{ overflowX: 'auto' }}>
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: 'grey.50' }}>

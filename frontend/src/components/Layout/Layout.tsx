@@ -41,7 +41,8 @@ export default function Layout() {
             СтудСобытия
           </Typography>
 
-          <Button color="inherit" component={RouterLink} to="/events">
+          <Button color="inherit" component={RouterLink} to="/events"
+            sx={{ display: { xs: 'none', sm: 'inline-flex' } }}>
             Мероприятия
           </Button>
 
