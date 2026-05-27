@@ -18,7 +18,9 @@ apiClient.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    // Не пытаемся рефрешить, если сам запрос рефреша вернул 401 — иначе бесконечная петля
+    const isRefreshCall = original?.url?.includes('/auth/refresh');
+    if (error.response?.status === 401 && !original._retry && !isRefreshCall) {
       original._retry = true;
       const refreshToken = useAuthStore.getState().refreshToken;
       if (refreshToken) {
@@ -30,6 +32,8 @@ apiClient.interceptors.response.use(
         } catch {
           useAuthStore.getState().logout();
         }
+      } else {
+        useAuthStore.getState().logout();
       }
     }
     return Promise.reject(error);
@@ -37,17 +41,21 @@ apiClient.interceptors.response.use(
 );
 
 // Auth
+// refresh использует сырой axios (не apiClient) чтобы избежать рекурсии в response interceptor
 export const authApi = {
   register: (data: any) => apiClient.post('/auth/register', data),
   login: (data: any) => apiClient.post<any>('/auth/login', data),
   logout: (refreshToken?: string) => apiClient.post('/auth/logout', { refreshToken }),
-  refresh: (refreshToken: string) => apiClient.post('/auth/refresh', { refreshToken }),
+  refresh: (refreshToken: string) =>
+    axios.post(`${API_BASE}/auth/refresh`, { refreshToken }),
 };
 
 // Users
 export const usersApi = {
   getMe: () => apiClient.get<any>('/users/me'),
   updateMe: (data: any) => apiClient.put('/users/me', data),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    apiClient.patch('/users/me/password', data),
   getEventsHistory: (params?: any) => apiClient.get('/users/me/events-history', { params }),
 };
 
@@ -57,6 +65,7 @@ export const eventsApi = {
   getOne: (id: string) => apiClient.get<any>(`/events/${id}`),
   create: (data: any) => apiClient.post('/events', data),
   update: (id: string, data: any) => apiClient.put(`/events/${id}`, data),
+  cancel: (id: string) => apiClient.patch(`/events/${id}/cancel`, {}),
   delete: (id: string) => apiClient.delete(`/events/${id}`),
   getMyEvents: (params?: any) => apiClient.get('/events/my', { params }),
 };
@@ -67,6 +76,7 @@ export const registrationApi = {
   cancel: (eventId: string) => apiClient.delete(`/events/${eventId}/register`),
   getAttendees: (eventId: string, params?: any) =>
     apiClient.get(`/events/${eventId}/attendees`, { params }),
+  getExportUrl: (eventId: string) => `${API_BASE}/events/${eventId}/attendees/export`,
 };
 
 // Attendance / QR
@@ -88,6 +98,9 @@ export const adminApi = {
     apiClient.put(`/admin/events/${id}/moderate`, { action, rejectionReason }),
   getUsers: (params?: any) => apiClient.get('/admin/users', { params }),
   updateUser: (id: string, data: any) => apiClient.put(`/admin/users/${id}`, data),
+  deleteUser: (id: string) => apiClient.delete(`/admin/users/${id}`),
+  createDean: (data: { login: string; email: string; password: string; fullName?: string }) =>
+    apiClient.post('/admin/users/dean', data),
   getAnalytics: (params?: any) => apiClient.get('/admin/analytics', { params }),
 };
 
@@ -105,6 +118,9 @@ export const universityApi = {
 
 // References
 export const referencesApi = {
+  // Все подразделения (для фильтров и формы мероприятия)
   getInstitutes: () => apiClient.get<any>('/references/institutes'),
+  // Только академические институты (для профиля студента)
+  getAcademicInstitutes: () => apiClient.get<any>('/references/institutes?category=INSTITUTE'),
   getEventTypes: () => apiClient.get<any>('/references/event-types'),
 };

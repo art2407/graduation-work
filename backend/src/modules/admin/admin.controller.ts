@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -6,12 +6,19 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole, UserStatus } from '@prisma/client';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEnum, IsOptional, IsString, IsEmail, MinLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 class ModerateEventDto {
   @ApiPropertyOptional() @IsEnum(['approve', 'reject']) action: 'approve' | 'reject';
   @ApiPropertyOptional() @IsOptional() @IsString() rejectionReason?: string;
+}
+
+class CreateDeanDto {
+  @ApiProperty() @IsString() login: string;
+  @ApiProperty() @IsEmail() email: string;
+  @ApiProperty({ minLength: 8 }) @IsString() @MinLength(8) password: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() fullName?: string;
 }
 
 class UpdateUserDto {
@@ -53,6 +60,12 @@ export class AdminController {
     @Query('limit') limit?: number,
   ) {
     return this.adminService.getUsers({ role, status, search }, page, limit);
+  }
+
+  @Post('users/dean')
+  @ApiOperation({ summary: 'Создать аккаунт сотрудника вуза (DEAN)' })
+  createDean(@Body() dto: CreateDeanDto) {
+    return this.adminService.createDeanUser(dto);
   }
 
   @Put('users/:id')

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -30,10 +30,13 @@ export class ReferencesController {
   constructor(private prisma: PrismaService) {}
 
   @Get('institutes')
-  @ApiOperation({ summary: 'Get institutes dictionary' })
-  async getInstitutes() {
+  @ApiOperation({ summary: 'Get institutes/organizations dictionary. Use ?category=INSTITUTE for academic only' })
+  async getInstitutes(@Query('category') category?: string) {
     const institutes = await this.prisma.instituteDict.findMany({
-      where: { isActive: true },
+      where: {
+        isActive: true,
+        ...(category ? { category } : {}),
+      },
       orderBy: { name: 'asc' },
     });
     return { institutes };
@@ -67,3 +70,4 @@ export class ReferencesController {
     return { types: EVENT_TYPES };
   }
 }
+

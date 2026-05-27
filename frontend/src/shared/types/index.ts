@@ -46,6 +46,7 @@ export interface Event {
   endAt?: string;
   registrationDeadline?: string;
   address: string;
+  room?: string;
   latitude: number;
   longitude: number;
   institute?: { id: string; name: string } | null;

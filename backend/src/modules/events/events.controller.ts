@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards,
+  Controller, Get, Post, Put, Patch, Delete, Body, Param, Query, UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { EventsService } from './events.service';
@@ -63,6 +63,15 @@ export class EventsController {
     @Body() dto: UpdateEventDto,
   ) {
     return this.eventsService.update(id, userId, dto);
+  }
+
+  @Patch(':id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ORGANIZER)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Cancel event (owner only)' })
+  cancel(@Param('id') id: string, @CurrentUser('id') userId: string) {
+    return this.eventsService.cancel(id, userId);
   }
 
   @Delete(':id')

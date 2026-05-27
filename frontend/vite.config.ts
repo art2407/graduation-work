@@ -83,8 +83,9 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:4000',
-        changeOrigin: true
+        // In Docker, override via API_PROXY_TARGET=http://backend:4000 env var
+        target: process.env.API_PROXY_TARGET || 'http://localhost:4000',
+        changeOrigin: true,
       }
     }
   }

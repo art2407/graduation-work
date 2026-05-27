@@ -1,9 +1,9 @@
-import { Controller, Get, Put, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Put, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { UpdateStudentDto, UpdateOrganizerDto } from './dto/update-user.dto';
+import { UpdateStudentDto, UpdateOrganizerDto, ChangePasswordDto } from './dto/update-user.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -28,6 +28,14 @@ export class UsersController {
     @Body() dto: UpdateStudentDto | UpdateOrganizerDto,
   ) {
     return this.usersService.updateMe(userId, role as any, dto);
+  }
+
+  @Patch('me/password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Change password' })
+  changePassword(@CurrentUser('id') userId: string, @Body() dto: ChangePasswordDto) {
+    return this.usersService.changePassword(userId, dto);
   }
 
   @Get('me/events-history')

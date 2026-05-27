@@ -1,14 +1,15 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   Box, Typography, TextField, Button, Alert, CircularProgress,
-  MenuItem, Select, FormControl, InputLabel, Grid, FormHelperText,
+  MenuItem, Select, FormControl, InputLabel, Grid, FormHelperText, Skeleton,
 } from '@mui/material';
-import { Add, ArrowBack, InfoOutlined } from '@mui/icons-material';
+import { Save, ArrowBack, InfoOutlined } from '@mui/icons-material';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { format } from 'date-fns';
 import { eventsApi, referencesApi } from '../../shared/api/client';
 
 const schema = z.object({
@@ -63,6 +64,11 @@ const EVENT_TYPES = [
   { value: 'other',     label: 'Другое' },
 ];
 
+const toLocalInput = (iso?: string | null) => {
+  if (!iso) return '';
+  return format(new Date(iso), "yyyy-MM-dd'T'HH:mm");
+};
+
 function FieldLabel({ children, required }: { children: any; required?: boolean }) {
   return (
     <Typography variant="caption" fontWeight={600} color="text.primary"
@@ -94,7 +100,8 @@ function SectionCard({ title, children }: { title: string; children: any }) {
   );
 }
 
-export default function CreateEventPage() {
+export default function EditEventPage() {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [error, setError] = useState('');
 
@@ -103,10 +110,29 @@ export default function CreateEventPage() {
     queryFn: () => referencesApi.getInstitutes().then((r) => r.data.institutes),
   });
 
+  const { data: event, isLoading } = useQuery({
+    queryKey: ['event', id],
+    queryFn: () => eventsApi.getOne(id!).then((r) => r.data),
+    enabled: !!id,
+  });
+
   const { register, handleSubmit, control, formState: { errors, isSubmitting } } =
     useForm<FormData>({
       resolver: zodResolver(schema),
-      defaultValues: { type: '', instituteId: '' },
+      values: event ? {
+        title: event.title ?? '',
+        description: event.description ?? '',
+        type: event.type ?? '',
+        startAt: toLocalInput(event.startAt),
+        endAt: toLocalInput(event.endAt),
+        registrationDeadline: toLocalInput(event.registrationDeadline),
+        address: event.address ?? '',
+        room: event.room ?? '',
+        capacity: event.capacity ?? '',
+        instituteId: event.institute?.id ?? '',
+        contactEmail: event.contactEmail ?? '',
+        chatLink: event.chatLink ?? '',
+      } : undefined,
     });
 
   const onSubmit = async (data: FormData) => {
@@ -123,12 +149,31 @@ export default function CreateEventPage() {
         chatLink: data.chatLink || undefined,
         instituteId: data.instituteId || undefined,
       };
-      const { data: res } = await eventsApi.create(payload);
-      navigate(`/events/${res.id}`);
+      await eventsApi.update(id!, payload);
+      navigate('/my-events');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Ошибка создания мероприятия');
+      setError(err.response?.data?.message || 'Ошибка обновления мероприятия');
     }
   };
+
+  if (isLoading) return (
+    <Box maxWidth={720} mx="auto">
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 4 }}>
+        <Skeleton variant="rectangular" width={36} height={36} sx={{ borderRadius: '10px' }} />
+        <Box sx={{ flex: 1 }}>
+          <Skeleton width={220} height={28} />
+          <Skeleton width={160} height={16} sx={{ mt: 0.5 }} />
+        </Box>
+      </Box>
+      {[1, 2, 3, 4].map((i) => (
+        <Skeleton key={i} variant="rectangular" height={160} sx={{ mb: 2, borderRadius: '16px' }} />
+      ))}
+    </Box>
+  );
+
+  if (!event) return (
+    <Alert severity="error" sx={{ borderRadius: '12px' }}>Мероприятие не найдено</Alert>
+  );
 
   return (
     <Box maxWidth={720} mx="auto">
@@ -150,25 +195,25 @@ export default function CreateEventPage() {
         </Box>
         <Box>
           <Typography variant="h5" fontWeight={800} color="text.primary" sx={{ letterSpacing: '-0.3px' }}>
-            Новое мероприятие
+            Редактировать мероприятие
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Заполните все обязательные поля
+          <Typography variant="caption" color="text.secondary" noWrap>
+            {event.title}
           </Typography>
         </Box>
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 3, borderRadius: '12px' }}>{error}</Alert>}
 
-      {/* ── Уведомление о модерации ── */}
+      {/* ── Уведомление о повторной модерации ── */}
       <Box sx={{
         display: 'flex', gap: 1.5, alignItems: 'flex-start',
         p: 2, mb: 3, borderRadius: '12px',
-        bgcolor: '#EEF2FF', border: '1px solid #C7D2FE',
+        bgcolor: '#FFFBEB', border: '1px solid #FDE68A',
       }}>
-        <InfoOutlined sx={{ color: 'primary.main', fontSize: 20, mt: 0.15, flexShrink: 0 }} />
-        <Typography variant="body2" sx={{ color: '#3730A3' }}>
-          После создания мероприятие будет отправлено на модерацию администратору
+        <InfoOutlined sx={{ color: '#D97706', fontSize: 20, mt: 0.15, flexShrink: 0 }} />
+        <Typography variant="body2" sx={{ color: '#92400E' }}>
+          После сохранения мероприятие будет отправлено на повторную модерацию
         </Typography>
       </Box>
 
@@ -280,7 +325,7 @@ export default function CreateEventPage() {
           <Button
             variant="outlined"
             size="large"
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/my-events')}
             sx={{ flex: 1 }}
           >
             Отмена
@@ -290,10 +335,10 @@ export default function CreateEventPage() {
             variant="contained"
             size="large"
             disabled={isSubmitting}
-            startIcon={!isSubmitting && <Add />}
+            startIcon={!isSubmitting && <Save />}
             sx={{ flex: 2, py: 1.5 }}
           >
-            {isSubmitting ? <CircularProgress size={22} color="inherit" /> : 'Создать мероприятие'}
+            {isSubmitting ? <CircularProgress size={22} color="inherit" /> : 'Сохранить изменения'}
           </Button>
         </Box>
 

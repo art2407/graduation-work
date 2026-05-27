@@ -32,7 +32,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     response.status(status).json({
       statusCode: status,
-      message: Array.isArray(message) ? 'Validation failed' : message,
+      message: Array.isArray(message) ? 'Ошибка валидации' : message,
       ...(details && { details }),
     });
   }

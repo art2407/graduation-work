@@ -141,8 +141,9 @@ model Event {
   endAt                DateTime?
   registrationDeadline DateTime?
   address              String
-  latitude             Decimal   @db.Decimal(9, 6)
-  longitude            Decimal   @db.Decimal(9, 6)
+  room                 String?
+  latitude             Decimal?  @db.Decimal(9, 6)
+  longitude            Decimal?  @db.Decimal(9, 6)
 
   instituteId String?
   institute   InstituteDict? @relation(fields: [instituteId], references: [id])
@@ -225,12 +226,14 @@ model PushSubscription {
 }
 
 model InstituteDict {
-  id             String           @id @default(uuid())
-  name           String           @unique
-  code           String?          @unique
-  isActive       Boolean          @default(true)
+  id              String           @id @default(uuid())
+  name            String           @unique
+  code            String?          @unique
+  isActive        Boolean          @default(true)
+  category        String           @default("INSTITUTE") // INSTITUTE | ORGANIZATION
   studentProfiles StudentProfile[]
   events          Event[]
 
   @@index([isActive])
+  @@index([category])
 }

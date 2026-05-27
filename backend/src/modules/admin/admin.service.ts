@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventStatus, UserStatus, UserRole } from '@prisma/client';
 
@@ -36,7 +37,7 @@ export class AdminService {
     rejectionReason?: string,
   ) {
     const event = await this.prisma.event.findUnique({ where: { id } });
-    if (!event) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Мероприятие не найдено');
 
     const status = action === 'approve' ? EventStatus.PUBLISHED : EventStatus.REJECTED;
 
@@ -50,7 +51,7 @@ export class AdminService {
       },
     });
 
-    return { message: `Event ${action === 'approve' ? 'approved' : 'rejected'}`, status };
+    return { message: action === 'approve' ? 'Мероприятие опубликовано' : 'Мероприятие отклонено', status };
   }
 
   async getUsers(filters: { role?: UserRole; status?: UserStatus; search?: string }, page: any = 1, limit: any = 20) {
@@ -89,9 +90,32 @@ export class AdminService {
     };
   }
 
+  async createDeanUser(dto: { login: string; email: string; password: string; fullName?: string }) {
+    const existing = await this.prisma.user.findFirst({
+      where: { OR: [{ login: dto.login }, { email: dto.email }] },
+    });
+    if (existing) throw new ConflictException('Пользователь с таким логином или email уже существует');
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        login: dto.login,
+        email: dto.email,
+        passwordHash,
+        role: UserRole.DEAN,
+      },
+      select: { id: true, login: true, email: true, role: true, createdAt: true },
+    });
+    return user;
+  }
+
   async updateUser(id: string, dto: { status?: UserStatus; role?: UserRole }) {
     const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('Пользователь не найден');
+
+    if (dto.role === UserRole.ADMIN) {
+      throw new BadRequestException('Нельзя назначить роль администратора через этот эндпоинт');
+    }
 
     await this.prisma.user.update({
       where: { id },
@@ -101,7 +125,7 @@ export class AdminService {
       },
     });
 
-    return { message: 'User updated successfully' };
+    return { message: 'Пользователь обновлён' };
   }
 
   async getAnalytics(period: 'day' | 'week' | 'month' | 'year' = 'month') {

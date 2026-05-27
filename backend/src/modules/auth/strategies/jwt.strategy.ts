@@ -20,7 +20,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
 
     if (!user || user.status !== 'ACTIVE') {
-      throw new UnauthorizedException('User not found or blocked');
+      throw new UnauthorizedException('Пользователь не найден или заблокирован');
     }
 
     return user;

@@ -67,7 +67,7 @@ export class EventsService {
       },
     });
 
-    if (!event) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Мероприятие не найдено');
 
     let isRegistered = false;
     let isCheckedIn = false;
@@ -94,7 +94,7 @@ export class EventsService {
       where: { userId: organizerUserId },
     });
 
-    if (!profile) throw new ForbiddenException('Organizer profile not found');
+    if (!profile) throw new ForbiddenException('Профиль организатора не найден');
 
     const event = await this.prisma.event.create({
       data: {
@@ -106,8 +106,7 @@ export class EventsService {
         registrationDeadline: dto.registrationDeadline
           ? new Date(dto.registrationDeadline) : undefined,
         address: dto.address,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
+        room: dto.room,
         instituteId: dto.instituteId,
         capacity: dto.capacity,
         contactEmail: dto.contactEmail,
@@ -118,11 +117,16 @@ export class EventsService {
       },
     });
 
-    return { id: event.id, message: 'Event created and sent for moderation', status: event.status };
+    return { id: event.id, message: 'Мероприятие создано и отправлено на модерацию', status: event.status };
   }
 
   async update(id: string, organizerUserId: string, dto: UpdateEventDto) {
     const event = await this.findEventWithOwnerCheck(id, organizerUserId);
+
+    const nonEditableStatuses: EventStatus[] = [EventStatus.CANCELLED, EventStatus.COMPLETED, EventStatus.ARCHIVED];
+    if (nonEditableStatuses.includes(event.status)) {
+      throw new BadRequestException('Нельзя редактировать мероприятие в текущем статусе');
+    }
 
     const updated = await this.prisma.event.update({
       where: { id },
@@ -136,8 +140,7 @@ export class EventsService {
           registrationDeadline: dto.registrationDeadline ? new Date(dto.registrationDeadline) : null,
         }),
         ...(dto.address && { address: dto.address }),
-        ...(dto.latitude !== undefined && { latitude: dto.latitude }),
-        ...(dto.longitude !== undefined && { longitude: dto.longitude }),
+        ...(dto.room !== undefined && { room: dto.room }),
         ...(dto.instituteId !== undefined && { instituteId: dto.instituteId }),
         ...(dto.capacity !== undefined && { capacity: dto.capacity }),
         ...(dto.contactEmail !== undefined && { contactEmail: dto.contactEmail }),
@@ -147,7 +150,25 @@ export class EventsService {
       },
     });
 
-    return { message: 'Event updated and sent for re-moderation', event: updated };
+    return { message: 'Мероприятие обновлено и отправлено на повторную модерацию', event: updated };
+  }
+
+  async cancel(id: string, organizerUserId: string) {
+    const event = await this.findEventWithOwnerCheck(id, organizerUserId);
+
+    if (event.status === EventStatus.CANCELLED) {
+      throw new BadRequestException('Мероприятие уже отменено');
+    }
+    if (event.status === EventStatus.COMPLETED) {
+      throw new BadRequestException('Нельзя отменить завершённое мероприятие');
+    }
+
+    await this.prisma.event.update({
+      where: { id },
+      data: { status: EventStatus.CANCELLED },
+    });
+
+    return { message: 'Мероприятие отменено' };
   }
 
   async remove(id: string, organizerUserId: string) {
@@ -158,7 +179,7 @@ export class EventsService {
       data: { deletedAt: new Date(), status: EventStatus.CANCELLED },
     });
 
-    return { message: 'Event deleted successfully' };
+    return { message: 'Мероприятие удалено' };
   }
 
   async getMyEvents(organizerUserId: string, page: any = 1, limit: any = 20) {
@@ -169,7 +190,7 @@ export class EventsService {
       where: { userId: organizerUserId },
     });
 
-    if (!profile) throw new ForbiddenException('Organizer profile not found');
+    if (!profile) throw new ForbiddenException('Профиль организатора не найден');
 
     const skip = (p - 1) * l;
     const [data, total] = await Promise.all([
@@ -196,9 +217,9 @@ export class EventsService {
 
     const event = await this.prisma.event.findUnique({ where: { id, deletedAt: null } });
 
-    if (!event) throw new NotFoundException('Event not found');
+    if (!event) throw new NotFoundException('Мероприятие не найдено');
     if (!profile || event.organizerId !== profile.id) {
-      throw new ForbiddenException('Access denied');
+      throw new ForbiddenException('Нет доступа');
     }
 
     return event;

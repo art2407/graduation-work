@@ -1,7 +1,10 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable, NotFoundException, ForbiddenException, BadRequestException,
+} from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { UserRole } from '@prisma/client';
-import { UpdateStudentDto, UpdateOrganizerDto } from './dto/update-user.dto';
+import { UpdateStudentDto, UpdateOrganizerDto, ChangePasswordDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -24,11 +27,14 @@ export class UsersService {
       },
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('Пользователь не найден');
     return user;
   }
 
   async updateMe(userId: string, role: UserRole, dto: UpdateStudentDto | UpdateOrganizerDto) {
+    if (role !== UserRole.STUDENT && role !== UserRole.ORGANIZER) {
+      throw new ForbiddenException('Редактирование профиля недоступно для данной роли');
+    }
     if (role === UserRole.STUDENT) {
       const data = dto as UpdateStudentDto;
       await this.prisma.studentProfile.update({
@@ -59,6 +65,19 @@ export class UsersService {
     return this.getMe(userId);
   }
 
+  async changePassword(userId: string, dto: ChangePasswordDto) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new NotFoundException('Пользователь не найден');
+
+    const valid = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!valid) throw new BadRequestException('Неверный текущий пароль');
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+
+    return { message: 'Пароль успешно изменён' };
+  }
+
   async getPublicProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId, status: 'ACTIVE' },
@@ -74,7 +93,7 @@ export class UsersService {
       },
     });
 
-    if (!user) throw new NotFoundException('User not found');
+    if (!user) throw new NotFoundException('Пользователь не найден');
     return user;
   }
 

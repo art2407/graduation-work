@@ -1,5 +1,5 @@
-import { IsOptional, IsString, IsInt, Min, Max, IsDateString } from 'class-validator';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, IsInt, Min, Max, IsDateString, MinLength, Matches } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateStudentDto {
   @ApiPropertyOptional() @IsOptional() @IsString() fullName?: string;
@@ -7,8 +7,22 @@ export class UpdateStudentDto {
   @ApiPropertyOptional() @IsOptional() @IsString() phone?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() avatarUrl?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() instituteId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() group?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^$|^[А-ЯЁ]{2,4}-\d{2}-\d{2}$/, { message: 'Формат группы: ЭЛБО-02-18' })
+  group?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(6) yearOfStudy?: number;
+}
+
+export class ChangePasswordDto {
+  @ApiProperty() @IsString() currentPassword: string;
+  @ApiProperty({ minLength: 8 })
+  @IsString()
+  @MinLength(8, { message: 'Пароль должен содержать не менее 8 символов' })
+  @Matches(/[a-zA-Z]/, { message: 'Пароль должен содержать хотя бы одну латинскую букву' })
+  @Matches(/[0-9]/, { message: 'Пароль должен содержать хотя бы одну цифру' })
+  newPassword: string;
 }
 
 export class UpdateOrganizerDto {

@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsString,
   MinLength,
+  Matches,
   ValidateNested,
   IsDateString,
   IsInt,
@@ -35,7 +36,12 @@ export class OrganizerProfileDto {
 export class RegisterDto {
   @ApiProperty() @IsString() @IsNotEmpty() login: string;
   @ApiProperty() @IsEmail() email: string;
-  @ApiProperty({ minLength: 8 }) @IsString() @MinLength(8) password: string;
+  @ApiProperty({ minLength: 8, description: 'Мин. 8 символов, буква и цифра обязательны' })
+  @IsString()
+  @MinLength(8, { message: 'Пароль должен содержать не менее 8 символов' })
+  @Matches(/[a-zA-Z]/, { message: 'Пароль должен содержать хотя бы одну латинскую букву' })
+  @Matches(/[0-9]/, { message: 'Пароль должен содержать хотя бы одну цифру' })
+  password: string;
 
   @ApiProperty({ enum: [UserRole.STUDENT, UserRole.ORGANIZER] })
   @IsEnum([UserRole.STUDENT, UserRole.ORGANIZER])

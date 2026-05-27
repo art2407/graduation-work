@@ -1,4 +1,5 @@
-import { Controller, Post, Delete, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Delete, Get, Param, Query, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { RegistrationService } from './registration.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -44,5 +45,22 @@ export class RegistrationController {
     @Query('limit') limit?: number,
   ) {
     return this.registrationService.getAttendees(eventId, userId, role, status, page, limit);
+  }
+
+  @Get(':id/attendees/export')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ORGANIZER, UserRole.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Export attendees as CSV (Organizer/Admin only)' })
+  async exportAttendees(
+    @Param('id') eventId: string,
+    @CurrentUser('id') userId: string,
+    @CurrentUser('role') role: string,
+    @Res() res: Response,
+  ) {
+    const csv = await this.registrationService.exportCsv(eventId, userId, role);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="attendees-${eventId}.csv"`);
+    res.send('﻿' + csv);
   }
 }
