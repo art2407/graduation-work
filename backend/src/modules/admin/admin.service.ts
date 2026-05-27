@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EventStatus, UserStatus, UserRole } from '@prisma/client';
@@ -112,6 +112,10 @@ export class AdminService {
   async updateUser(id: string, dto: { status?: UserStatus; role?: UserRole }) {
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('Пользователь не найден');
+
+    if (dto.role === UserRole.ADMIN) {
+      throw new BadRequestException('Нельзя назначить роль администратора через этот эндпоинт');
+    }
 
     await this.prisma.user.update({
       where: { id },

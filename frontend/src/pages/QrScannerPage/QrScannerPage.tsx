@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import jsQR from 'jsqr';
 import {
-  Box, Typography, Paper, Alert, Button, Stack, Chip,
-  CircularProgress, Divider,
+  Box, Typography, Button, Stack, CircularProgress,
 } from '@mui/material';
-import { CheckCircle, Error, CameraAlt, Stop } from '@mui/icons-material';
+import {
+  CheckCircle, Error as ErrorIcon, CameraAlt, Stop,
+} from '@mui/icons-material';
 import { attendanceApi } from '../../shared/api/client';
 
 type ScanResult = {
@@ -57,7 +58,6 @@ export default function QrScannerPage() {
       });
     } finally {
       setLoading(false);
-      // Разрешаем следующее сканирование через 3 сек
       setTimeout(() => {
         cooldownRef.current = false;
         lastTokenRef.current = null;
@@ -80,9 +80,7 @@ export default function QrScannerPage() {
     const code = jsQR(imageData.data, imageData.width, imageData.height, {
       inversionAttempts: 'dontInvert',
     });
-    if (code?.data) {
-      processToken(code.data);
-    }
+    if (code?.data) processToken(code.data);
     animRef.current = requestAnimationFrame(tick);
   }, [processToken]);
 
@@ -108,31 +106,34 @@ export default function QrScannerPage() {
   useEffect(() => () => stopCamera(), [stopCamera]);
 
   return (
-    <Box maxWidth={600} mx="auto">
-      <Typography variant="h5" fontWeight={700} mb={1}>
-        Сканер QR-кодов
-      </Typography>
-      <Typography variant="body2" color="text.secondary" mb={3}>
-        Направьте камеру на QR-код участника для отметки посещения
-      </Typography>
+    <Box maxWidth={580} mx="auto">
 
-      <Paper elevation={2} sx={{ overflow: 'hidden', mb: 2 }}>
-        {/* Область камеры */}
-        <Box
-          sx={{
-            position: 'relative',
-            bgcolor: 'black',
-            aspectRatio: '4/3',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
+      {/* ── Шапка ── */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" fontWeight={800} color="text.primary" sx={{ letterSpacing: '-0.3px' }}>
+          Сканер QR-кодов
+        </Typography>
+        <Typography variant="body2" color="text.secondary" mt={0.25}>
+          Направьте камеру на QR-код участника для отметки посещения
+        </Typography>
+      </Box>
+
+      {/* ── Камера ── */}
+      <Box sx={{
+        bgcolor: 'background.paper', borderRadius: '20px',
+        border: '1px solid', borderColor: 'divider',
+        overflow: 'hidden', mb: 2,
+      }}>
+        {/* Видео-область */}
+        <Box sx={{
+          position: 'relative', bgcolor: '#0F0F1A',
+          aspectRatio: '4/3',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
           <video
             ref={videoRef}
             style={{
-              width: '100%',
-              height: '100%',
+              width: '100%', height: '100%',
               objectFit: 'cover',
               display: scanning ? 'block' : 'none',
             }}
@@ -141,9 +142,10 @@ export default function QrScannerPage() {
           />
           <canvas ref={canvasRef} style={{ display: 'none' }} />
 
+          {/* Пустое состояние */}
           {!scanning && (
-            <Box textAlign="center" color="white">
-              <CameraAlt sx={{ fontSize: 64, opacity: 0.5, mb: 1 }} />
+            <Box textAlign="center" sx={{ color: 'rgba(255,255,255,.5)' }}>
+              <CameraAlt sx={{ fontSize: 56, mb: 1 }} />
               <Typography variant="body2" sx={{ opacity: 0.7 }}>
                 Камера не активна
               </Typography>
@@ -152,110 +154,143 @@ export default function QrScannerPage() {
 
           {/* Прицел */}
           {scanning && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
-                width: 200, height: 200,
-                border: '3px solid',
-                borderColor: loading ? 'warning.main' : 'primary.main',
-                borderRadius: 2,
-                pointerEvents: 'none',
-                '&::before, &::after': {
-                  content: '""',
-                  position: 'absolute',
-                  width: 24, height: 24,
-                  borderColor: 'inherit',
-                },
-              }}
-            />
+            <Box sx={{
+              position: 'absolute',
+              top: '50%', left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: 200, height: 200,
+              pointerEvents: 'none',
+            }}>
+              {/* Угловые маркеры */}
+              {[
+                { top: 0, left: 0, borderTop: '3px solid', borderLeft: '3px solid', borderRadius: '4px 0 0 0' },
+                { top: 0, right: 0, borderTop: '3px solid', borderRight: '3px solid', borderRadius: '0 4px 0 0' },
+                { bottom: 0, left: 0, borderBottom: '3px solid', borderLeft: '3px solid', borderRadius: '0 0 0 4px' },
+                { bottom: 0, right: 0, borderBottom: '3px solid', borderRight: '3px solid', borderRadius: '0 0 4px 0' },
+              ].map((style, i) => (
+                <Box key={i} sx={{
+                  position: 'absolute', width: 24, height: 24,
+                  borderColor: loading ? '#F97316' : '#4F46E5',
+                  ...style,
+                  transition: 'border-color .3s',
+                }} />
+              ))}
+            </Box>
           )}
 
+          {/* Загрузка */}
           {loading && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: '50%', left: '50%',
-                transform: 'translate(-50%, -50%)',
-                bgcolor: 'rgba(0,0,0,0.6)',
-                borderRadius: 2,
-                p: 2,
-              }}
-            >
-              <CircularProgress size={36} sx={{ color: 'white' }} />
+            <Box sx={{
+              position: 'absolute', inset: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              bgcolor: 'rgba(0,0,0,.55)',
+            }}>
+              <CircularProgress sx={{ color: 'white' }} />
             </Box>
           )}
         </Box>
 
-        {/* Кнопки управления */}
-        <Box p={2}>
-          <Stack direction="row" spacing={2}>
-            {!scanning ? (
-              <Button
-                variant="contained"
-                fullWidth
-                startIcon={<CameraAlt />}
-                onClick={startCamera}
-              >
-                Включить камеру
-              </Button>
-            ) : (
-              <Button
-                variant="outlined"
-                color="error"
-                fullWidth
-                startIcon={<Stop />}
-                onClick={stopCamera}
-              >
-                Остановить
-              </Button>
-            )}
-          </Stack>
+        {/* Кнопка управления */}
+        <Box sx={{ p: 2 }}>
+          {!scanning ? (
+            <Button
+              variant="contained"
+              fullWidth
+              startIcon={<CameraAlt />}
+              onClick={startCamera}
+              size="large"
+              sx={{ borderRadius: '12px', py: 1.5 }}
+            >
+              Включить камеру
+            </Button>
+          ) : (
+            <Button
+              variant="outlined"
+              color="error"
+              fullWidth
+              startIcon={<Stop />}
+              onClick={stopCamera}
+              size="large"
+              sx={{ borderRadius: '12px', py: 1.5 }}
+            >
+              Остановить
+            </Button>
+          )}
         </Box>
-      </Paper>
+      </Box>
 
-      {cameraError && <Alert severity="error" sx={{ mb: 2 }}>{cameraError}</Alert>}
+      {/* ── Ошибка камеры ── */}
+      {cameraError && (
+        <Box sx={{
+          display: 'flex', gap: 1.5, alignItems: 'flex-start',
+          p: 2, mb: 2, borderRadius: '12px',
+          bgcolor: '#FEF2F2', border: '1px solid #FECACA',
+        }}>
+          <ErrorIcon sx={{ color: '#991B1B', mt: 0.1, flexShrink: 0 }} />
+          <Typography variant="body2" sx={{ color: '#991B1B' }}>{cameraError}</Typography>
+        </Box>
+      )}
 
-      {/* Результат сканирования */}
+      {/* ── Результат сканирования ── */}
       {result && (
-        <Paper elevation={2} sx={{ p: 2 }}>
+        <Box sx={{
+          bgcolor: 'background.paper', borderRadius: '16px',
+          border: '2px solid',
+          borderColor: result.ok
+            ? (result.alreadyCheckedIn ? '#FDE68A' : '#6EE7B7')
+            : '#FECACA',
+          p: 2.5,
+        }}>
           {result.ok ? (
             result.alreadyCheckedIn ? (
-              <Stack spacing={1}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Error color="warning" />
-                  <Typography fontWeight={600} color="warning.main">
-                    Уже отмечен
-                  </Typography>
-                </Stack>
-                <Divider />
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                  <Box sx={{
+                    width: 36, height: 36, borderRadius: '50%', bgcolor: '#FEF3C7',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <ErrorIcon sx={{ color: '#D97706', fontSize: 20 }} />
+                  </Box>
+                  <Typography fontWeight={700} color="#D97706">Уже отмечен</Typography>
+                </Box>
                 <ParticipantInfo participant={result.participant!} />
-                <Typography variant="caption" color="text.secondary">
-                  Отмечен: {result.checkedInAt
-                    ? new Date(result.checkedInAt).toLocaleString('ru-RU')
-                    : '—'}
-                </Typography>
-              </Stack>
+                {result.checkedInAt && (
+                  <Typography variant="caption" color="text.secondary" display="block" mt={1}>
+                    Отмечен: {new Date(result.checkedInAt).toLocaleString('ru-RU')}
+                  </Typography>
+                )}
+              </Box>
             ) : (
-              <Stack spacing={1}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <CheckCircle color="success" />
-                  <Typography fontWeight={600} color="success.main">
-                    Успешно отмечен
-                  </Typography>
-                </Stack>
-                <Divider />
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                  <Box sx={{
+                    width: 36, height: 36, borderRadius: '50%', bgcolor: '#D1FAE5',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <CheckCircle sx={{ color: '#065F46', fontSize: 20 }} />
+                  </Box>
+                  <Typography fontWeight={700} color="#065F46">Успешно отмечен</Typography>
+                </Box>
                 <ParticipantInfo participant={result.participant!} />
-              </Stack>
+              </Box>
             )
           ) : (
-            <Stack direction="row" spacing={1} alignItems="flex-start">
-              <Error color="error" sx={{ mt: 0.3 }} />
-              <Typography color="error">{result.error}</Typography>
-            </Stack>
+            <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5 }}>
+              <Box sx={{
+                width: 36, height: 36, borderRadius: '50%', bgcolor: '#FEE2E2',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>
+                <ErrorIcon sx={{ color: '#991B1B', fontSize: 20 }} />
+              </Box>
+              <Box>
+                <Typography fontWeight={700} color="#991B1B">Ошибка</Typography>
+                <Typography variant="body2" color="text.secondary" mt={0.25}>
+                  {result.error}
+                </Typography>
+              </Box>
+            </Box>
           )}
-        </Paper>
+        </Box>
       )}
     </Box>
   );
@@ -265,16 +300,26 @@ function ParticipantInfo({ participant }: {
   participant: { name: string; group: string; institute: string };
 }) {
   return (
-    <Stack spacing={0.5}>
-      <Typography fontWeight={600}>{participant.name || '—'}</Typography>
-      <Stack direction="row" spacing={1}>
+    <Box>
+      <Typography fontWeight={700} color="text.primary">{participant.name || '—'}</Typography>
+      <Stack direction="row" spacing={1} mt={0.5} flexWrap="wrap">
         {participant.group && (
-          <Chip label={participant.group} size="small" variant="outlined" />
+          <Box sx={{
+            px: 1.5, py: 0.3, borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600,
+            bgcolor: '#EEF2FF', color: '#4338CA',
+          }}>
+            {participant.group}
+          </Box>
         )}
         {participant.institute && (
-          <Chip label={participant.institute} size="small" variant="outlined" />
+          <Box sx={{
+            px: 1.5, py: 0.3, borderRadius: '20px', fontSize: '0.75rem', fontWeight: 600,
+            bgcolor: '#F3F4F6', color: '#374151',
+          }}>
+            {participant.institute}
+          </Box>
         )}
       </Stack>
-    </Stack>
+    </Box>
   );
 }

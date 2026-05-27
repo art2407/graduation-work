@@ -25,11 +25,7 @@ export class AuthService {
     });
 
     if (existing) {
-      throw new ConflictException(
-        existing.login === dto.login
-          ? 'Этот логин уже занят'
-          : 'Email уже зарегистрирован',
-      );
+      throw new ConflictException('Логин или email уже используется');
     }
 
     if (dto.role === UserRole.STUDENT && !dto.studentProfile) {
@@ -158,9 +154,8 @@ export class AuthService {
       .update(rawRefresh)
       .digest('hex');
 
-    const refreshDays = parseInt(process.env.REFRESH_TOKEN_EXPIRES_IN ?? '7d') || 7;
     const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + refreshDays);
+    expiresAt.setDate(expiresAt.getDate() + 7); // 7 дней, изменить через переменную если нужно
 
     await this.prisma.refreshToken.create({
       data: { userId: user.id, tokenHash, expiresAt },

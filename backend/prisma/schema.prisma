@@ -141,8 +141,9 @@ model Event {
   endAt                DateTime?
   registrationDeadline DateTime?
   address              String
-  latitude             Decimal   @db.Decimal(9, 6)
-  longitude            Decimal   @db.Decimal(9, 6)
+  room                 String?
+  latitude             Decimal?  @db.Decimal(9, 6)
+  longitude            Decimal?  @db.Decimal(9, 6)
 
   instituteId String?
   institute   InstituteDict? @relation(fields: [instituteId], references: [id])

@@ -7,7 +7,11 @@ export class UpdateStudentDto {
   @ApiPropertyOptional() @IsOptional() @IsString() phone?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() avatarUrl?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() instituteId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() group?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @Matches(/^$|^[А-ЯЁ]{2,4}-\d{2}-\d{2}$/, { message: 'Формат группы: ЭЛБО-02-18' })
+  group?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Max(6) yearOfStudy?: number;
 }
 

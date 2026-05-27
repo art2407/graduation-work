@@ -24,13 +24,6 @@ export class RegistrationService {
       throw new BadRequestException('Срок регистрации истёк');
     }
 
-    if (event.capacity) {
-      const count = await this.prisma.registration.count({
-        where: { eventId, status: RegistrationStatus.CONFIRMED },
-      });
-      if (count >= event.capacity) throw new BadRequestException('Все места заняты');
-    }
-
     const existing = await this.prisma.registration.findUnique({
       where: { eventId_userId: { eventId, userId } },
     });
@@ -42,7 +35,13 @@ export class RegistrationService {
       if (existing.status === RegistrationStatus.ATTENDED) {
         throw new ConflictException('Вы уже посетили это мероприятие');
       }
-      // Повторная запись после отмены
+      // Повторная запись после отмены — тоже проверяем вместимость
+      if (event.capacity) {
+        const count = await this.prisma.registration.count({
+          where: { eventId, status: RegistrationStatus.CONFIRMED },
+        });
+        if (count >= event.capacity) throw new BadRequestException('Все места заняты');
+      }
       const updated = await this.prisma.registration.update({
         where: { id: existing.id },
         data: { status: RegistrationStatus.CONFIRMED, cancelledAt: null, registeredAt: new Date() },
@@ -50,8 +49,16 @@ export class RegistrationService {
       return { message: 'Вы успешно зарегистрированы', registration: updated };
     }
 
-    const registration = await this.prisma.registration.create({
-      data: { eventId, userId, status: RegistrationStatus.CONFIRMED },
+    const registration = await this.prisma.$transaction(async (tx) => {
+      if (event.capacity) {
+        const count = await tx.registration.count({
+          where: { eventId, status: RegistrationStatus.CONFIRMED },
+        });
+        if (count >= event.capacity) throw new BadRequestException('Все места заняты');
+      }
+      return tx.registration.create({
+        data: { eventId, userId, status: RegistrationStatus.CONFIRMED },
+      });
     });
 
     // Генерируем QR-токен для участника
@@ -65,6 +72,7 @@ export class RegistrationService {
         studentProfile.fullName,
         studentProfile.group ?? '',
         studentProfile.institute?.name ?? '',
+        event.startAt,
       );
     }
 

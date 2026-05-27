@@ -32,6 +32,9 @@ export class UsersService {
   }
 
   async updateMe(userId: string, role: UserRole, dto: UpdateStudentDto | UpdateOrganizerDto) {
+    if (role !== UserRole.STUDENT && role !== UserRole.ORGANIZER) {
+      throw new ForbiddenException('Редактирование профиля недоступно для данной роли');
+    }
     if (role === UserRole.STUDENT) {
       const data = dto as UpdateStudentDto;
       await this.prisma.studentProfile.update({

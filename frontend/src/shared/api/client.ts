@@ -18,7 +18,9 @@ apiClient.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
+    // Не пытаемся рефрешить, если сам запрос рефреша вернул 401 — иначе бесконечная петля
+    const isRefreshCall = original?.url?.includes('/auth/refresh');
+    if (error.response?.status === 401 && !original._retry && !isRefreshCall) {
       original._retry = true;
       const refreshToken = useAuthStore.getState().refreshToken;
       if (refreshToken) {
@@ -30,6 +32,8 @@ apiClient.interceptors.response.use(
         } catch {
           useAuthStore.getState().logout();
         }
+      } else {
+        useAuthStore.getState().logout();
       }
     }
     return Promise.reject(error);
@@ -37,11 +41,13 @@ apiClient.interceptors.response.use(
 );
 
 // Auth
+// refresh использует сырой axios (не apiClient) чтобы избежать рекурсии в response interceptor
 export const authApi = {
   register: (data: any) => apiClient.post('/auth/register', data),
   login: (data: any) => apiClient.post<any>('/auth/login', data),
   logout: (refreshToken?: string) => apiClient.post('/auth/logout', { refreshToken }),
-  refresh: (refreshToken: string) => apiClient.post('/auth/refresh', { refreshToken }),
+  refresh: (refreshToken: string) =>
+    axios.post(`${API_BASE}/auth/refresh`, { refreshToken }),
 };
 
 // Users
@@ -92,6 +98,7 @@ export const adminApi = {
     apiClient.put(`/admin/events/${id}/moderate`, { action, rejectionReason }),
   getUsers: (params?: any) => apiClient.get('/admin/users', { params }),
   updateUser: (id: string, data: any) => apiClient.put(`/admin/users/${id}`, data),
+  deleteUser: (id: string) => apiClient.delete(`/admin/users/${id}`),
   createDean: (data: { login: string; email: string; password: string; fullName?: string }) =>
     apiClient.post('/admin/users/dean', data),
   getAnalytics: (params?: any) => apiClient.get('/admin/analytics', { params }),

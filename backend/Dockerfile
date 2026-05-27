@@ -9,9 +9,10 @@ RUN npm install
 
 COPY . .
 
-RUN npx prisma generate
-
-RUN npm run build
+# prisma generate only reads the schema to generate TypeScript types;
+# it doesn't connect to the DB, but Prisma 5 still validates env() refs at parse time.
+# A dummy URL satisfies the parser without a real DB.
+RUN DATABASE_URL="postgresql://build:build@localhost:5432/build" npx prisma generate
 
 EXPOSE 4000
 

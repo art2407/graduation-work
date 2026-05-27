@@ -1,6 +1,6 @@
 import {
   IsString, IsNotEmpty, IsDateString, IsOptional,
-  IsInt, Min, MaxLength, IsUrl, IsEmail, IsNumber,
+  IsInt, Min, MaxLength, IsEmail,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -13,8 +13,7 @@ export class CreateEventDto {
   @ApiPropertyOptional() @IsOptional() @IsDateString() endAt?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() registrationDeadline?: string;
   @ApiProperty() @IsString() @IsNotEmpty() address: string;
-  @ApiProperty() @IsNumber() @Type(() => Number) latitude: number;
-  @ApiProperty() @IsNumber() @Type(() => Number) longitude: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) room?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() instituteId?: string;
   @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) capacity?: number;
   @ApiPropertyOptional() @IsOptional() @IsEmail() contactEmail?: string;
@@ -30,10 +29,9 @@ export class UpdateEventDto {
   @ApiPropertyOptional() @IsOptional() @IsDateString() endAt?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() registrationDeadline?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() address?: string;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) latitude?: number;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) longitude?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) room?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() instituteId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) capacity?: number;
+  @ApiPropertyOptional() @IsOptional() @IsInt() @Min(1) @Type(() => Number) capacity?: number;
   @ApiPropertyOptional() @IsOptional() @IsEmail() contactEmail?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() contactPhone?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() chatLink?: string;

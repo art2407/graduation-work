@@ -1,34 +1,47 @@
 import {
   Injectable, NotFoundException, BadRequestException, ForbiddenException,
+  OnModuleInit,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 import * as QRCode from 'qrcode';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RegistrationStatus } from '@prisma/client';
 
-const QR_SECRET = process.env.QR_SECRET ?? 'qr-fallback-secret-change-in-prod';
-
 @Injectable()
-export class AttendanceService {
-  constructor(private prisma: PrismaService) {}
+export class AttendanceService implements OnModuleInit {
+  private qrSecret: string;
+
+  constructor(
+    private prisma: PrismaService,
+    private config: ConfigService,
+  ) {}
+
+  onModuleInit() {
+    this.qrSecret = this.config.getOrThrow<string>('QR_SECRET');
+  }
 
   // ── Генерация подписанного токена ────────────────────────────────────────
 
-  static buildToken(payload: Record<string, any>): string {
+  buildToken(payload: Record<string, any>): string {
     const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
-    const sig = crypto.createHmac('sha256', QR_SECRET).update(data).digest('hex');
+    const sig = crypto.createHmac('sha256', this.qrSecret).update(data).digest('hex');
     return `${data}.${sig}`;
   }
 
-  static verifyToken(token: string): Record<string, any> | null {
+  verifyToken(token: string): Record<string, any> | null {
     const dot = token.lastIndexOf('.');
     if (dot === -1) return null;
     const data = token.slice(0, dot);
     const sig = token.slice(dot + 1);
-    const expected = crypto.createHmac('sha256', QR_SECRET).update(data).digest('hex');
-    if (sig !== expected) return null;
+    const expected = crypto.createHmac('sha256', this.qrSecret).update(data).digest('hex');
+    const sigBuf = Buffer.from(sig, 'hex');
+    const expectedBuf = Buffer.from(expected, 'hex');
+    if (sigBuf.length !== expectedBuf.length || !crypto.timingSafeEqual(sigBuf, expectedBuf)) return null;
     try {
-      return JSON.parse(Buffer.from(data, 'base64url').toString());
+      const payload = JSON.parse(Buffer.from(data, 'base64url').toString());
+      if (payload.exp && Math.floor(Date.now() / 1000) > payload.exp) return null;
+      return payload;
     } catch {
       return null;
     }
@@ -43,8 +56,12 @@ export class AttendanceService {
     fullName: string,
     group: string,
     institute: string,
+    eventStartAt: Date,
   ): Promise<string> {
-    const token = AttendanceService.buildToken({
+    const expireAt = new Date(eventStartAt);
+    expireAt.setHours(expireAt.getHours() + 24);
+
+    const token = this.buildToken({
       rid: registrationId,
       uid: userId,
       eid: eventId,
@@ -52,6 +69,7 @@ export class AttendanceService {
       group,
       institute,
       iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(expireAt.getTime() / 1000),
     });
 
     await this.prisma.registration.update({
@@ -85,32 +103,41 @@ export class AttendanceService {
       throw new BadRequestException('Регистрация отменена');
     }
 
-    // Генерируем токен, если ещё нет
     if (!reg.qrToken) {
       const sp = reg.user.studentProfile;
       const token = await this.generateTokenForRegistration(
         reg.id, userId, reg.eventId,
         sp?.fullName ?? '', sp?.group ?? '', sp?.institute?.name ?? '',
+        reg.event.startAt,
       );
-      const dataUrl = await QRCode.toDataURL(token, { width: 400, margin: 2 });
-      return dataUrl;
+      return QRCode.toDataURL(token, { width: 400, margin: 2 });
     }
 
-    const dataUrl = await QRCode.toDataURL(reg.qrToken, { width: 400, margin: 2 });
-    return dataUrl;
+    // Проверяем не истёк ли существующий токен
+    const verified = this.verifyToken(reg.qrToken);
+    if (!verified) {
+      const sp = reg.user.studentProfile;
+      const token = await this.generateTokenForRegistration(
+        reg.id, userId, reg.eventId,
+        sp?.fullName ?? '', sp?.group ?? '', sp?.institute?.name ?? '',
+        reg.event.startAt,
+      );
+      return QRCode.toDataURL(token, { width: 400, margin: 2 });
+    }
+
+    return QRCode.toDataURL(reg.qrToken, { width: 400, margin: 2 });
   }
 
   // ── Сканирование организатором ────────────────────────────────────────────
 
   async scanQr(rawToken: string, organizerUserId: string, callerRole = 'ORGANIZER') {
-    const payload = AttendanceService.verifyToken(rawToken);
+    const payload = this.verifyToken(rawToken);
     if (!payload) {
-      throw new BadRequestException('Недействительный QR-код');
+      throw new BadRequestException('Недействительный или просроченный QR-код');
     }
 
     const { rid, uid, eid, name, group, institute } = payload;
 
-    // Проверяем, что сканирующий — организатор данного мероприятия
     const event = await this.prisma.event.findUnique({
       where: { id: eid, deletedAt: null },
       include: { organizer: true },
@@ -124,7 +151,6 @@ export class AttendanceService {
       throw new ForbiddenException('Вы не являетесь организатором этого мероприятия');
     }
 
-    // Мероприятие ещё не началось
     if (new Date() < new Date(event.startAt)) {
       const startsIn = Math.ceil(
         (new Date(event.startAt).getTime() - Date.now()) / 60000,
@@ -134,7 +160,6 @@ export class AttendanceService {
       );
     }
 
-    // Находим регистрацию
     const reg = await this.prisma.registration.findUnique({
       where: { id: rid },
     });
@@ -142,7 +167,6 @@ export class AttendanceService {
       throw new BadRequestException('QR-код не соответствует регистрации');
     }
 
-    // Уже отмечен
     if (reg.status === RegistrationStatus.ATTENDED) {
       return {
         alreadyCheckedIn: true,

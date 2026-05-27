@@ -106,8 +106,7 @@ export class EventsService {
         registrationDeadline: dto.registrationDeadline
           ? new Date(dto.registrationDeadline) : undefined,
         address: dto.address,
-        latitude: dto.latitude,
-        longitude: dto.longitude,
+        room: dto.room,
         instituteId: dto.instituteId,
         capacity: dto.capacity,
         contactEmail: dto.contactEmail,
@@ -124,6 +123,11 @@ export class EventsService {
   async update(id: string, organizerUserId: string, dto: UpdateEventDto) {
     const event = await this.findEventWithOwnerCheck(id, organizerUserId);
 
+    const nonEditableStatuses: EventStatus[] = [EventStatus.CANCELLED, EventStatus.COMPLETED, EventStatus.ARCHIVED];
+    if (nonEditableStatuses.includes(event.status)) {
+      throw new BadRequestException('Нельзя редактировать мероприятие в текущем статусе');
+    }
+
     const updated = await this.prisma.event.update({
       where: { id },
       data: {
@@ -136,8 +140,7 @@ export class EventsService {
           registrationDeadline: dto.registrationDeadline ? new Date(dto.registrationDeadline) : null,
         }),
         ...(dto.address && { address: dto.address }),
-        ...(dto.latitude !== undefined && { latitude: dto.latitude }),
-        ...(dto.longitude !== undefined && { longitude: dto.longitude }),
+        ...(dto.room !== undefined && { room: dto.room }),
         ...(dto.instituteId !== undefined && { instituteId: dto.instituteId }),
         ...(dto.capacity !== undefined && { capacity: dto.capacity }),
         ...(dto.contactEmail !== undefined && { contactEmail: dto.contactEmail }),
