@@ -1,0 +1,24 @@
+version: '3.9'
+
+# Override-файл для публикации через CloudPub.
+# Использование:
+#   docker compose -f docker-compose.prod.yml -f docker-compose.cloudpub.yml --env-file .env.prod up -d --build
+
+services:
+  cloudpub:
+    image: cloudpub/cloudpub:latest
+    container_name: events_cloudpub
+    restart: unless-stopped
+    environment:
+      # Токен из личного кабинета cloudpub.ru/dashboard
+      TOKEN: ${CLOUDPUB_TOKEN}
+      # Публикуем nginx-фронтенд; он сам проксирует /api/ на бэкенд
+      HTTP: frontend:80
+    command: run
+    depends_on:
+      - frontend
+    volumes:
+      - cloudpub_config:/home/cloudpub
+
+volumes:
+  cloudpub_config:
