@@ -1,4 +1,4 @@
-import { Controller, Get, Put, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Post, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -72,6 +72,12 @@ export class AdminController {
   @ApiOperation({ summary: 'Update user (block, change role)' })
   updateUser(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.adminService.updateUser(id, dto);
+  }
+
+  @Delete('users/:id')
+  @ApiOperation({ summary: 'Delete user permanently' })
+  deleteUser(@Param('id') id: string) {
+    return this.adminService.deleteUser(id);
   }
 
   @Get('analytics')

@@ -128,6 +128,16 @@ export class AdminService {
     return { message: 'Пользователь обновлён' };
   }
 
+  async deleteUser(id: string) {
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Пользователь не найден');
+    if (user.role === UserRole.ADMIN) {
+      throw new BadRequestException('Нельзя удалить администратора');
+    }
+    await this.prisma.user.delete({ where: { id } });
+    return { message: 'Пользователь удалён' };
+  }
+
   async getAnalytics(period: 'day' | 'week' | 'month' | 'year' = 'month') {
     const now = new Date();
     const from = new Date();
