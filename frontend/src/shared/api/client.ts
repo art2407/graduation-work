@@ -99,6 +99,7 @@ export const adminApi = {
   getUsers: (params?: any) => apiClient.get('/admin/users', { params }),
   updateUser: (id: string, data: any) => apiClient.put(`/admin/users/${id}`, data),
   deleteUser: (id: string) => apiClient.delete(`/admin/users/${id}`),
+  resetUserPassword: (id: string, password: string) => apiClient.put(`/admin/users/${id}/password`, { password }),
   createDean: (data: { login: string; email: string; password: string; fullName?: string }) =>
     apiClient.post('/admin/users/dean', data),
   getAnalytics: (params?: any) => apiClient.get('/admin/analytics', { params }),

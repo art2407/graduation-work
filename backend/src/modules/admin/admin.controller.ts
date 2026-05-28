@@ -74,6 +74,12 @@ export class AdminController {
     return this.adminService.updateUser(id, dto);
   }
 
+  @Put('users/:id/password')
+  @ApiOperation({ summary: 'Reset user password' })
+  resetUserPassword(@Param('id') id: string, @Body() body: { password: string }) {
+    return this.adminService.resetUserPassword(id, body.password);
+  }
+
   @Delete('users/:id')
   @ApiOperation({ summary: 'Delete user permanently' })
   deleteUser(@Param('id') id: string) {

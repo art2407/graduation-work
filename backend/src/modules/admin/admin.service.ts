@@ -128,11 +128,29 @@ export class AdminService {
     return { message: 'Пользователь обновлён' };
   }
 
-  async deleteUser(id: string) {
+  async resetUserPassword(id: string, newPassword: string) {
     const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) throw new NotFoundException('Пользователь не найден');
+    if (newPassword.length < 4) throw new BadRequestException('Пароль слишком короткий');
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({ where: { id }, data: { passwordHash } });
+    return { message: 'Пароль обновлён' };
+  }
+
+  async deleteUser(id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      include: { organizerProfile: true },
+    });
     if (!user) throw new NotFoundException('Пользователь не найден');
     if (user.role === UserRole.ADMIN) {
       throw new BadRequestException('Нельзя удалить администратора');
+    }
+    // Event.organizer has onDelete: Restrict — удаляем мероприятия до удаления профиля
+    if (user.organizerProfile) {
+      await this.prisma.event.deleteMany({
+        where: { organizerId: user.organizerProfile.id },
+      });
     }
     await this.prisma.user.delete({ where: { id } });
     return { message: 'Пользователь удалён' };

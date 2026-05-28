@@ -4,11 +4,12 @@ import {
   Box, Typography, Tabs, Tab, Button, Alert, CircularProgress,
   TextField, Select, MenuItem, FormControl, InputLabel, Grid,
   Dialog, DialogTitle, DialogContent, DialogActions, Stack,
-  IconButton, Tooltip, Divider,
+  IconButton, Tooltip, Divider, InputAdornment,
 } from '@mui/material';
 import {
   CheckCircle, Cancel, People, EventNote, BarChart,
-  PersonAdd, School, Block, LockOpen, Delete,
+  PersonAdd, School, Block, LockOpen, Delete, Key,
+  Visibility, VisibilityOff,
 } from '@mui/icons-material';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
@@ -328,6 +329,86 @@ function CreateDeanDialog({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ── Диалог сброса пароля ──────────────────────────────────────────────────────
+
+function ResetPasswordDialog({ user, onClose }: { user: { id: string; name: string }; onClose: () => void }) {
+  const [password, setPassword] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
+
+  const mutation = useMutation({
+    mutationFn: () => adminApi.resetUserPassword(user.id, password),
+    onSuccess: () => setSuccess(true),
+    onError: (err: any) => setError(err.response?.data?.message || 'Ошибка сброса пароля'),
+  });
+
+  return (
+    <Dialog open onClose={onClose} maxWidth="xs" fullWidth
+      PaperProps={{ sx: { borderRadius: '20px' } }}>
+      <DialogTitle>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{
+            width: 36, height: 36, borderRadius: '10px',
+            bgcolor: '#EEF2FF', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Key sx={{ color: 'primary.main', fontSize: 20 }} />
+          </Box>
+          <Typography fontWeight={700}>Сброс пароля</Typography>
+        </Box>
+      </DialogTitle>
+      <DialogContent>
+        <Typography variant="body2" color="text.secondary" mb={2}>
+          Пользователь: <b>{user.name}</b>
+        </Typography>
+        {success ? (
+          <Box sx={{ p: 2, borderRadius: '12px', bgcolor: '#D1FAE5', border: '1px solid #6EE7B7' }}>
+            <Typography variant="body2" color="#065F46" fontWeight={600}>
+              Пароль успешно изменён
+            </Typography>
+          </Box>
+        ) : (
+          <Stack spacing={2}>
+            {error && <Alert severity="error" sx={{ borderRadius: '10px' }}>{error}</Alert>}
+            <TextField
+              label="Новый пароль"
+              type={showPwd ? 'text' : 'password'}
+              fullWidth
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              helperText="Минимум 4 символа"
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton onClick={() => setShowPwd((v) => !v)} edge="end" size="small">
+                      {showPwd ? <VisibilityOff fontSize="small" /> : <Visibility fontSize="small" />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Stack>
+        )}
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 2.5, gap: 1 }}>
+        <Button onClick={onClose} variant="outlined" sx={{ flex: 1 }}>
+          {success ? 'Закрыть' : 'Отмена'}
+        </Button>
+        {!success && (
+          <Button
+            variant="contained"
+            onClick={() => mutation.mutate()}
+            disabled={password.length < 4 || mutation.isPending}
+            sx={{ flex: 1 }}
+          >
+            {mutation.isPending ? <CircularProgress size={20} color="inherit" /> : 'Сохранить'}
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
+  );
+}
+
 // ── Вкладка: Пользователи ─────────────────────────────────────────────────────
 
 function UsersTab() {
@@ -336,6 +417,7 @@ function UsersTab() {
   const [roleFilter, setRoleFilter] = useState('');
   const [createDeanOpen, setCreateDeanOpen] = useState(false);
   const [confirmDeleteUser, setConfirmDeleteUser] = useState<{ id: string; name: string } | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<{ id: string; name: string } | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-users', search, roleFilter],
@@ -466,6 +548,16 @@ function UsersTab() {
 
                   <Divider orientation="vertical" flexItem />
 
+                  <Tooltip title="Сбросить пароль">
+                    <IconButton
+                      size="small"
+                      color="primary"
+                      onClick={() => setResetPasswordUser({ id: user.id, name })}
+                    >
+                      <Key fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+
                   <Tooltip title={user.status === 'BLOCKED' ? 'Разблокировать' : 'Заблокировать'}>
                     <IconButton
                       size="small"
@@ -500,6 +592,12 @@ function UsersTab() {
       )}
 
       {createDeanOpen && <CreateDeanDialog onClose={() => setCreateDeanOpen(false)} />}
+      {resetPasswordUser && (
+        <ResetPasswordDialog
+          user={resetPasswordUser}
+          onClose={() => setResetPasswordUser(null)}
+        />
+      )}
 
       {/* ── Диалог удаления пользователя ── */}
       <Dialog
